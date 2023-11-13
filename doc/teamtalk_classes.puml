@@ -1,0 +1,69 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+'ggf. werden Threads durch Coroutines (Kotlin-native Funktion) eingesetzt.
+class ChatClient {
+    clientSocket: Socket
+    clientThread: ClientThread
+    uuid: UUID
+    username: String
+    --
+    start()
+    getUsername(): String
+    getThread(): ClientThread
+    getUuid(): UUID
+    sendMessage(message: String, receiver: ChatClient): Boolean
+    sendFile(file: File, receiver: ChatClient): Boolean
+}
+
+class ClientThread {
+    ClientThread(chatClient: ChatClient)
+    chatClient: ChatClient
+    --
+    run()
+    getClient(): ChatClient
+}
+
+class ChatServer {
+    ChatServer(IP, PORT)
+    IP: InetAddress
+    PORT: Int
+    clients: List<ChatClient>
+    --
+    start()
+    stop()
+}
+
+class ServerThread {
+    ServerThread()
+    --
+    run()
+}
+
+ChatClient --|> ClientThread
+ClientThread --|> ChatClient
+ChatServer --|> ServerThread
+'abstract class AbstractList
+'abstract AbstractCollection
+'interface List
+'interface Collection
+'
+'List <|-- AbstractList
+'Collection <|-- AbstractCollection
+'
+'Collection <|- List
+'AbstractCollection <|- AbstractList
+'AbstractList <|-- ArrayList
+'
+'class ArrayList {
+'Object[] elementData
+'size()
+'}
+'
+'enum TimeUnit {
+'DAYS
+'HOURS
+'MINUTES
+'}
+
+@enduml
