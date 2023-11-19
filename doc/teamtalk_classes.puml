@@ -1,69 +1,85 @@
 @startuml
-'https://plantuml.com/class-diagram
+title TeamTalk | Klassendiagramm
 
-'ggf. werden Threads durch Coroutines (Kotlin-native Funktion) eingesetzt.
-class ChatClient {
-    clientSocket: Socket
-    clientThread: ClientThread
-    uuid: UUID
-    username: String
-    --
-    start()
-    getUsername(): String
-    getThread(): ClientThread
-    getUuid(): UUID
-    sendMessage(message: String, receiver: ChatClient): Boolean
-    sendFile(file: File, receiver: ChatClient): Boolean
+class Client {
+    main()
 }
 
-class ClientThread {
-    ClientThread(chatClient: ChatClient)
-    chatClient: ChatClient
+class Server {
+    main()
+}
+
+class ClientGUI {
     --
-    run()
-    getClient(): ChatClient
+    create(chatClient: ChatClient)
+}
+
+class ServerGUI {
+    --
+    create()
+}
+
+class ChatClient {
+    +ChatClient() : Communicable
+    -clientSocket: Socket
+    -clientCoroutine: ClientCoroutine
+    -uuid: UUID
+    -username: String
+    --
+    +start()
+    +stop()
+    +getUsername(): String
+    +getCoroutine(): ClientCoroutine
+    +getUUID(): UUID
+    +sendMessage(message: String, receiver: ChatClient)
+    +sendFile(file: File, receiver: ChatClient)
+}
+
+class ClientCoroutine {
+    +ClientCoroutine(chatClient: ChatClient)
+    -chatClient: ChatClient
+    --
+    +run()
+    +getClient(): ChatClient
 }
 
 class ChatServer {
-    ChatServer(IP, PORT)
-    IP: InetAddress
-    PORT: Int
-    clients: List<ChatClient>
+    +ChatServer(IP, PORT) : Communicable
+    -IP: InetAddress
+    -PORT: Int
+    -clients: List<ChatClient>
     --
+    +start()
+    +stop()
+}
+
+class ServerCoroutine {
+    +ServerCoroutine()
+    --
+    +run()
+}
+
+interface Communicable {
     start()
     stop()
 }
 
-class ServerThread {
-    ServerThread()
-    --
-    run()
+enum CoroutineType {
+    SERVER_BASE
+    SERVER_CLIENT
+    CLIENT
 }
 
-ChatClient --|> ClientThread
-ClientThread --|> ChatClient
-ChatServer --|> ServerThread
-'abstract class AbstractList
-'abstract AbstractCollection
-'interface List
-'interface Collection
-'
-'List <|-- AbstractList
-'Collection <|-- AbstractCollection
-'
-'Collection <|- List
-'AbstractCollection <|- AbstractList
-'AbstractList <|-- ArrayList
-'
-'class ArrayList {
-'Object[] elementData
-'size()
-'}
-'
-'enum TimeUnit {
-'DAYS
-'HOURS
-'MINUTES
-'}
+enum ViewType {
+    PRE_VIEW
+    BASE_VIEW
+    CONFIG_VIEW
+}
+
+ChatClient -[dashed]-|> Communicable
+ChatServer -[dashed]-|> Communicable
+ChatServer "0..n" -> ChatClient
+ChatClient -> ClientCoroutine
+ChatServer -> ServerCoroutine
 
 @enduml
