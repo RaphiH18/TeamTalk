@@ -22,24 +22,25 @@ class ServerGUI {
 class ChatClient {
     +ChatClient() : Communicable
     -clientSocket: Socket
-    -clientCoroutine: ClientCoroutine
+    -clientHandler: ClientHandler
     -uuid: UUID
     -username: String
     --
     +start()
     +stop()
     +getUsername(): String
-    +getCoroutine(): ClientCoroutine
+    +getHandler(): ClientHandler
     +getUUID(): UUID
     +sendMessage(message: String, receiver: ChatClient)
     +sendFile(file: File, receiver: ChatClient)
 }
 
-class ClientCoroutine {
-    +ClientCoroutine(chatClient: ChatClient)
+class ClientHandler {
+    +ClientHandler(chatClient: ChatClient)
     -chatClient: ChatClient
     --
-    +run()
+    +start()
+    +stop()
     +getClient(): ChatClient
 }
 
@@ -48,15 +49,20 @@ class ChatServer {
     -IP: InetAddress
     -PORT: Int
     -clients: List<ChatClient>
+    -serverSocket: ServerSocket
     --
     +start()
     +stop()
+    +getServerSocket()
 }
 
-class ServerCoroutine {
-    +ServerCoroutine()
+class ServerHandler {
+    +ServerHandler(server: ChatServer)
     --
-    +run()
+    +start(type: HandlerType)
+    +stop()
+    -startBaseHandler()
+    -startClientHandler()
 }
 
 interface Communicable {
@@ -64,7 +70,7 @@ interface Communicable {
     stop()
 }
 
-enum CoroutineType {
+enum HandlerType {
     SERVER_BASE
     SERVER_CLIENT
     CLIENT
@@ -79,7 +85,7 @@ enum ViewType {
 ChatClient -[dashed]-|> Communicable
 ChatServer -[dashed]-|> Communicable
 ChatServer "0..n" -> ChatClient
-ChatClient -> ClientCoroutine
-ChatServer -> ServerCoroutine
+ChatClient -> ClientHandler
+ChatServer -> ServerHandler
 
 @enduml
