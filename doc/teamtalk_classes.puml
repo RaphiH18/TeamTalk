@@ -54,6 +54,7 @@ class ChatServer {
     +start()
     +stop()
     +getServerSocket()
+    +getClients(): List<ChatClient>
 }
 
 class ServerHandler {

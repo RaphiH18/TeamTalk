@@ -1,8 +1,10 @@
 package teamtalk.client
 
-fun main() {
-    /*
-    main-Methode des Serverteils der TeamTalk-Chat-App
-    */
-    println("Welcome! The TeamTalk Client is now running")
+import teamtalk.client.handler.ChatClient
+
+suspend fun main() {
+    Thread.sleep(2000)
+
+    val client = ChatClient()
+    client.start()
 }

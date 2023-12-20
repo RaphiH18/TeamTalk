@@ -1,13 +1,11 @@
 package teamtalk.server
 
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import javafx.application.Application
+import teamtalk.server.ui.ServerGUI
 
-fun main() {
+suspend fun main() {
     /*
     main-Methode des Serverteils der TeamTalk-Chat-App
     */
-    println("Welcome! The TeamTalk Server is now running")
-    println("Hallo ich bin Lukas")
+    Application.launch(ServerGUI::class.java)
 }
