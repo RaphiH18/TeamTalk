@@ -52,10 +52,6 @@ class ClientHandler(private val client: ChatClient) {
 
     fun createChattingView(): Node {
 
-        val allContent = VBox().apply{
-            padding = Insets(5.0)
-        }
-
         val currentUserLbl = Label("Lukas Ledergerber").apply{
             prefHeight = 50.0
             prefWidth = 580.0
@@ -74,27 +70,27 @@ class ClientHandler(private val client: ChatClient) {
             prefWidth = 280.0
         }
 
-        val inputChatBox = VBox().apply{
+        val inputChatVb = VBox().apply{
             padding = Insets(40.0, 0.0, 25.0, 0.0)
             children.add(inputChatTa)
         }
 
-        val sendenBtn = Button("Senden").apply{
+        val sendChatBtn = Button("Senden").apply{
             padding = Insets(0.0, 0.0, 0.0, 0.0)
             prefHeight = 30.0
             prefWidth = 280.0
         }
 
-        val chatContent = VBox().apply{
+        val chatContentVb = VBox().apply{
             padding = Insets(10.0,0.0,10.0,0.0)
             with(children){
                 add(outputChatTa)
-                add(inputChatBox)
-                add(sendenBtn)
+                add(inputChatVb)
+                add(sendChatBtn)
             }
         }
 
-        val datentransferLbl = Label("Datentransfer").apply {
+        val dataTransferLbl = Label("Datentransfer").apply {
             prefHeight = 25.0
             prefWidth = 290.0
             font = Font("Arial", 20.0)
@@ -102,7 +98,7 @@ class ClientHandler(private val client: ChatClient) {
             alignment = Pos.CENTER
         }
 
-        val empfangenLbl = Label("Empfangen").apply {
+        val receiveLbl = Label("Empfangen").apply {
             prefWidth = 250.0
             font = Font("Arial", 18.0)
             style = ("-fx-background-color: #E8E8E8")
@@ -112,7 +108,7 @@ class ClientHandler(private val client: ChatClient) {
         val testFile1Btn = Button("Meilensteintrendanalyse.xlsx").apply {
             prefWidth = 250.0
         }
-        val testFile1Content = VBox().apply {
+        val testFile1Vb = VBox().apply {
             padding = Insets(5.0, 0.0, 0.0, 0.0)
             children.add(testFile1Btn)
         }
@@ -125,24 +121,24 @@ class ClientHandler(private val client: ChatClient) {
             children.add(testFile2Btn)
         }
 
-        val empfangenContent = VBox().apply {
+        val receiveContentVb = VBox().apply {
             prefHeight = 390.0
             padding = Insets(5.0 ,0.0 ,0.0, 20.0)
             with(children) {
-                add(empfangenLbl)
-                add(testFile1Content)
+                add(receiveLbl)
+                add(testFile1Vb)
                 add(testFile2Content)
             }
         }
 
-        val sendenLbl = Label("Senden").apply {
+        val sendLbl = Label("Senden").apply {
             prefWidth = 250.0
             font = Font("Arial", 18.0)
             style = ("-fx-background-color: #E8E8E8")
         }
-        val sendenLblContent = VBox().apply {
+        val sendVb = VBox().apply {
             padding = Insets(0.0, 0.0, 5.0, 0.0)
-            children.add(sendenLbl)
+            children.add(sendLbl)
         }
 
         val chosenFileLbl = Label("Noch keine Datei ausgewählt").apply {
@@ -155,54 +151,57 @@ class ClientHandler(private val client: ChatClient) {
             prefWidth = 170.0
         }
 
-        val filePicketContent = VBox().apply{
+        val filePickerVb = VBox().apply{
             padding = Insets(0.0, 5.0, 0.0, 0.0)
             children.add(filePickerBtn)
         }
 
-        val sentBtn = Button("Senden").apply{
+        val sendDataBtn = Button("Senden").apply{
             prefHeight = 30.0
             prefWidth = 75.0
         }
 
-        val chooseSentBtnContent = HBox().apply {
+        val chooseSentHb = HBox().apply {
             padding = Insets(5.0, 0.0, 0.0, 0.0)
             with(children){
-                add(filePicketContent)
-                add(sentBtn)
+                add(filePickerVb)
+                add(sendDataBtn)
             }
         }
-        val sendenContent = VBox().apply {
+        val sendContentVb = VBox().apply {
             padding = Insets(0.0 ,0.0 ,0.0, 20.0)
             with(children){
-                add(sendenLblContent)
+                add(sendVb)
                 add(chosenFileLbl)
-                add(chooseSentBtnContent)
+                add(chooseSentHb)
             }
         }
 
-        val dataTransferContent = VBox().apply {
+        val dataTransferContentVb = VBox().apply {
             padding = Insets(10.0 ,0.0 ,0.0, 10.0)
             with(children) {
-                add(datentransferLbl)
-                add(empfangenContent)
-                add(sendenContent)
+                add(dataTransferLbl)
+                add(receiveContentVb)
+                add(sendContentVb)
             }
         }
 
-        val allContentDevider = HBox().apply{
+        val allContentDividerHb = HBox().apply{
             with(children) {
-                add(chatContent)
-                add(dataTransferContent)
+                add(chatContentVb)
+                add(dataTransferContentVb)
             }
         }
 
-        with(allContent.children){
-            add(currentUserLbl)
-            add(allContentDevider)
+        val allContentVb = VBox().apply{
+            padding = Insets(5.0)
+            with(children){
+                add(currentUserLbl)
+                add(allContentDividerHb)
+            }
         }
 
-        return allContent
+        return allContentVb
     }
 
     fun send(string: String) {
