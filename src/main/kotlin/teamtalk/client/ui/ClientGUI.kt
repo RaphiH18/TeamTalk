@@ -12,6 +12,7 @@ import teamtalk.client.handler.ChatClient
 class ClientGUI : Application() {
 private val uiScope = CoroutineScope(Dispatchers.JavaFx)
 private val handlerScope = CoroutineScope(Dispatchers.IO)
+    //LOGIN-Brancheler
 
     override fun start(stage: Stage) {
         val chatClient = ChatClient()
