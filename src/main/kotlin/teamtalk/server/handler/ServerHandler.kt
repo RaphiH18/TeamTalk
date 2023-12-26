@@ -9,7 +9,10 @@ import javafx.scene.layout.GridPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.shape.Circle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import teamtalk.jsonUtil
@@ -23,6 +26,7 @@ import java.net.Socket
 class ServerHandler(private val server: ChatServer) {
 
     private lateinit var serverSocket: ServerSocket
+    private val guiScope = CoroutineScope(Dispatchers.JavaFx)
 
     suspend fun start() {
         coroutineScope {
@@ -72,7 +76,13 @@ class ServerHandler(private val server: ChatServer) {
                 children.add(Circle(4.0))
                 children.add(Label("Server"))
                 children.add(Label("Port: 4444"))
-                children.add(Button("Start"))
+                children.add(Button("Start").also {
+                    it.setOnAction {
+                        guiScope.launch {
+                            start()
+                        }
+                    }
+                })
                 children.add(Button("Stop"))
                 padding = Insets(10.0)
                 spacing = 10.0
@@ -115,6 +125,9 @@ class ServerHandler(private val server: ChatServer) {
 
             when (jsonObj.get("type")) {
                 "HELLO" -> {
+
+                }
+                "LOGIN" -> {
                     val client = ServerClient(socket, jsonObj.get("username").toString())
                     server.getClients().add(client)
                     log("Connection between client (${client.getUsername()}) and server successfully established!")
