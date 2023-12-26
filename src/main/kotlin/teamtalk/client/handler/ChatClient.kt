@@ -4,6 +4,7 @@ import javafx.geometry.Insets
 import javafx.scene.control.*
 import javafx.scene.layout.VBox
 import java.io.IOException
+import java.util.ArrayList
 import java.util.UUID
 
 class ChatClient {
@@ -13,7 +14,7 @@ class ChatClient {
 
     private val handler = ClientHandler(this)
 
-    suspend fun start() {
+    fun start() {
         try {
             handler.connect()
         }
@@ -24,6 +25,9 @@ class ChatClient {
 
     fun getHandler(): ClientHandler = handler
 
+    fun getUserList(): ArrayList<String> {
+        return handler.userList
+    }
     fun getUsername(): String = username
 
     fun getUUID(): UUID = uuid
