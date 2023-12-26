@@ -8,8 +8,7 @@ suspend fun main() {
     Thread.sleep(2000)
 
     Application.launch((ClientGUI::class.java))
-
     /*val client = ChatClient()
     client.start()
-     */
+    */
 }
