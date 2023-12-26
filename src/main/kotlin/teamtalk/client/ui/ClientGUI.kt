@@ -2,28 +2,31 @@ package teamtalk.client.ui
 
 import javafx.application.Application
 import javafx.scene.Scene
+import javafx.scene.control.ChoiceDialog
 import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.javafx.JavaFx
-import kotlinx.coroutines.launch
 import teamtalk.client.handler.ChatClient
 
 class ClientGUI : Application() {
 private val uiScope = CoroutineScope(Dispatchers.JavaFx)
-private val handlerScope = CoroutineScope(Dispatchers.IO)
-    //LOGIN-Brancheler
-    // Lukalulu
+    //LOGIN2
 
     override fun start(stage: Stage) {
         val chatClient = ChatClient()
-
-        handlerScope.launch {
-            chatClient.start()
-        }
+        chatClient.start()
 
         //Userlogin
+        val dialog: ChoiceDialog<String> = ChoiceDialog("Auswahl...", chatClient.getUserList())
+        with(dialog){
+            setTitle("Benutzerauswahl")
+            setHeaderText(null)
+            setContentText("Benutzername:")
 
+        }
+        val result = dialog.showAndWait()
+        result.ifPresent { selected -> println("Selected: $selected") }
         starMainGUI(stage, chatClient)
 
         println("Willkommen! The TeamTalk Client is now running!!!")

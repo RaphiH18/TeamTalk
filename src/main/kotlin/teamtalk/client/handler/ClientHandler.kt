@@ -6,8 +6,6 @@ import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.control.Button
 import javafx.scene.control.Label
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
@@ -19,27 +17,39 @@ import javafx.scene.control.TextArea
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.text.Font
+import kotlinx.coroutines.*
+import org.json.JSONArray
 
 class ClientHandler(private val client: ChatClient) {
 
     private lateinit var socket: Socket
     private lateinit var output: PrintWriter
     private lateinit var input: BufferedReader
+    private val handlerScope = CoroutineScope(Dispatchers.IO)
+    val userList = ArrayList<String>()
 
-    suspend fun connect() {
-        coroutineScope {
-            launch {
-                socket = Socket("localhost", 4444)
-                output = PrintWriter(socket.getOutputStream())
-                input = BufferedReader(InputStreamReader(socket.getInputStream()))
+    fun connect() {
+        handlerScope.launch {
+            socket = Socket("localhost", 4444)
+            output = PrintWriter(socket.getOutputStream())
+            input = BufferedReader(InputStreamReader(socket.getInputStream()))
 
-                send(getHelloString())
-                input.readLine()
 
-                val receiveString = input.readLine()
-                println(receiveString)
-            }
+            //Initial HELLO - ReciveAvailableUsers
+            send(getHelloString())
+            var message = getServerAwnser(input)
+            processHelloAnswer(message)
+
         }
+    }
+
+    suspend fun getServerAwnser(input: BufferedReader): String {
+        var serverAnswer: String
+        do {
+            serverAnswer = input.readLine()
+            delay(100)
+        } while(serverAnswer.isEmpty())
+        return serverAnswer
     }
 
     fun createContactView(): Node {
@@ -225,6 +235,13 @@ class ClientHandler(private val client: ChatClient) {
         }
 
         return jsonObj.toString()
+    }
+
+    fun processHelloAnswer(message: String) {
+        val users = JSONArray(message)
+        for(user in users) {
+            userList.add(user.toString())
+        }
     }
 
     fun getLoginString(): String {

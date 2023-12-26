@@ -5,15 +5,14 @@ import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.control.*
 import javafx.scene.layout.AnchorPane
-import javafx.scene.layout.GridPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.shape.Circle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import org.json.JSONObject
 import teamtalk.jsonUtil
 import teamtalk.server.logger.log
@@ -42,10 +41,20 @@ class ServerHandler(private val server: ChatServer) {
                     val output = PrintWriter(socket.getOutputStream())
                     val input = BufferedReader(InputStreamReader(socket.getInputStream()))
 
-                    process(input.readLine(), socket)
+                    process(input.readLine(), socket, input, output)
                 }
             }
         }
+    }
+    fun getUserDataString(): String {
+        val users = arrayListOf("Raphaelel Hegi", "Lukas Ledergerber", "Yannick Meier")
+        val jsonList = JSONArray()
+        var listCounter = 0
+        for(user in users) {
+            jsonList.put(listCounter, user)
+            listCounter++
+        }
+        return jsonList.toString()
     }
 
     fun createControlView(): Node {
@@ -116,13 +125,15 @@ class ServerHandler(private val server: ChatServer) {
         return statsPane
     }
 
-    fun process(receivedString: String, socket: Socket) {
+    fun process(receivedString: String, socket: Socket, intput: BufferedReader, output: PrintWriter) {
         if (jsonUtil.isJSON(receivedString)) {
             val jsonObj = JSONObject(receivedString)
 
             when (jsonObj.get("type")) {
                 "HELLO" -> {
-
+                    getUserDataString()
+                    output.println(getUserDataString().toString())
+                    output.flush()
                 }
 
                 "LOGIN" -> {
