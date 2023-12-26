@@ -26,7 +26,7 @@ private val handlerScope = CoroutineScope(Dispatchers.IO)
 
         starMainGUI(stage, chatClient)
 
-        println("Willkommen! The TeamTalk Client is now running")
+        println("Willkommen! The TeamTalk Client is now running!!!")
     }
 
     fun starMainGUI(stage: Stage, chatClient: ChatClient) {
