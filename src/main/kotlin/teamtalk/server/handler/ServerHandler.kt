@@ -1,10 +1,14 @@
 package teamtalk.server.handler
 
+import javafx.geometry.Insets
+import javafx.geometry.Pos
 import javafx.scene.Node
-import javafx.scene.control.SplitPane
-import javafx.scene.control.Tab
-import javafx.scene.control.TabPane
+import javafx.scene.control.*
 import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.GridPane
+import javafx.scene.layout.HBox
+import javafx.scene.layout.VBox
+import javafx.scene.shape.Circle
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -62,15 +66,32 @@ class ServerHandler(private val server: ChatServer) {
         val handlerTabPane = TabPane().apply {
             prefWidth = 400.0
 
+            val dbAnchPane = VBox()
+
+            dbAnchPane.children.add(HBox().apply {
+                children.add(Circle(4.0))
+                children.add(Label("Server"))
+                children.add(Label("Port: 4444"))
+                children.add(Button("Start"))
+                children.add(Button("Stop"))
+                padding = Insets(10.0)
+                spacing = 10.0
+                alignment = Pos.CENTER_LEFT
+            })
+
+            val settAnchPane = AnchorPane().apply {
+                children.add(Button())
+            }
+
             with(tabs) {
                 add(Tab("Dashboard").apply {
                     isClosable = false
-                    content = AnchorPane()
+                    content = dbAnchPane
                 })
 
                 add(Tab("Einstellungen").apply {
                     isClosable = false
-                    content = AnchorPane()
+                    content = settAnchPane
                 })
             }
         }
