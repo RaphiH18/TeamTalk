@@ -27,29 +27,28 @@ class ServerHandler(private val server: ChatServer) {
 
     private lateinit var serverSocket: ServerSocket
     private val guiScope = CoroutineScope(Dispatchers.JavaFx)
+    private val handlerScope = CoroutineScope(Dispatchers.IO)
 
-    suspend fun start() {
-        coroutineScope {
-            launch {
-                serverSocket = ServerSocket(server.getPort(), 20, server.getIP())
-                log("Der Server wurde gestartet (${server.getIP()}, port ${server.getPort()})")
+    fun start() {
+        handlerScope.launch {
+            serverSocket = ServerSocket(server.getPort(), 20, server.getIP())
+            log("Der Server wurde gestartet (${server.getIP()}, port ${server.getPort()})")
 
-                while(true) {
-                    val socket = serverSocket.accept()
-                    log("New Client connected: ${socket.inetAddress.hostAddress}")
+            while (true) {
+                val socket = serverSocket.accept()
+                log("New Client connected: ${socket.inetAddress.hostAddress}")
 
-                    launch {
-                        val output = PrintWriter(socket.getOutputStream())
-                        val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+                launch {
+                    val output = PrintWriter(socket.getOutputStream())
+                    val input = BufferedReader(InputStreamReader(socket.getInputStream()))
 
-                        process(input.readLine(), socket)
-                    }
+                    process(input.readLine(), socket)
                 }
             }
         }
     }
 
-    fun createControlView() : Node {
+    fun createControlView(): Node {
         val controlArea = SplitPane()
 
         with(controlArea) {
@@ -66,7 +65,7 @@ class ServerHandler(private val server: ChatServer) {
         return controlArea
     }
 
-    private fun createHandlerArea() : Node {
+    private fun createHandlerArea(): Node {
         val handlerTabPane = TabPane().apply {
             prefWidth = 400.0
 
@@ -78,9 +77,7 @@ class ServerHandler(private val server: ChatServer) {
                 children.add(Label("Port: 4444"))
                 children.add(Button("Start").also {
                     it.setOnAction {
-                        guiScope.launch {
-                            start()
-                        }
+                        start()
                     }
                 })
                 children.add(Button("Stop"))
@@ -113,7 +110,7 @@ class ServerHandler(private val server: ChatServer) {
         return handlerPane
     }
 
-    private fun createStatsArea() : Node {
+    private fun createStatsArea(): Node {
         val statsPane = AnchorPane()
 
         return statsPane
@@ -127,17 +124,21 @@ class ServerHandler(private val server: ChatServer) {
                 "HELLO" -> {
 
                 }
+
                 "LOGIN" -> {
                     val client = ServerClient(socket, jsonObj.get("username").toString())
                     server.getClients().add(client)
                     log("Connection between client (${client.getUsername()}) and server successfully established!")
                 }
+
                 "MESSAGE" -> {
 
                 }
+
                 "FILE" -> {
 
                 }
+
                 "BYE" -> {
 
                 }
