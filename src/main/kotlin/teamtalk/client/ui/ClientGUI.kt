@@ -10,7 +10,7 @@ import kotlinx.coroutines.javafx.JavaFx
 import teamtalk.client.handler.ChatClient
 
 class ClientGUI : Application() {
-private val uiScope = CoroutineScope(Dispatchers.JavaFx)
+    private val uiScope = CoroutineScope(Dispatchers.JavaFx)
     //LOGIN2
 
     override fun start(stage: Stage) {
@@ -18,21 +18,26 @@ private val uiScope = CoroutineScope(Dispatchers.JavaFx)
         chatClient.start()
 
         //Userlogin
+        /*
+        TODO:
+        Dialog noch leer, da die Userlist noch leer ist. Diese wird erst gefüllt, wenn der Server eine Antwort gesendet hat.
+        Man müsste also einen Mechanismus einbauen, der wartet, bis die userList zur Verfügung steht.
+         */
+
         val dialog: ChoiceDialog<String> = ChoiceDialog("Auswahl...", chatClient.getUserList())
-        with(dialog){
+        with(dialog) {
             setTitle("Benutzerauswahl")
             setHeaderText(null)
             setContentText("Benutzername:")
-
         }
         val result = dialog.showAndWait()
         result.ifPresent { selected -> println("Selected: $selected") }
-        starMainGUI(stage, chatClient)
+        startMainGUI(stage, chatClient)
 
         println("Willkommen! The TeamTalk Client is now running!!!")
     }
 
-    fun starMainGUI(stage: Stage, chatClient: ChatClient) {
+    fun startMainGUI(stage: Stage, chatClient: ChatClient) {
 
 
         with(stage) {

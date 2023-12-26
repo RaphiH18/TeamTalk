@@ -4,6 +4,7 @@ import javafx.application.Application
 import javafx.scene.Scene
 import javafx.stage.Stage
 import teamtalk.server.handler.ChatServer
+import kotlin.system.exitProcess
 
 class ServerGUI : Application() {
     override fun start(stage: Stage) {
@@ -12,7 +13,7 @@ class ServerGUI : Application() {
         with(stage) {
             scene = Scene(chatServer.createBaseView(), 800.0, 600.0)
             title = "TeamTalk Server"
-            setOnCloseRequest { System.exit(0) }
+            setOnCloseRequest { exitProcess(0) }
             show()
         }
 

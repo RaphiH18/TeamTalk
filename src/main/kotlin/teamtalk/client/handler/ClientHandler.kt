@@ -25,7 +25,15 @@ class ClientHandler(private val client: ChatClient) {
     private lateinit var socket: Socket
     private lateinit var output: PrintWriter
     private lateinit var input: BufferedReader
+
     private val handlerScope = CoroutineScope(Dispatchers.IO)
+
+    /*
+    TODO:
+    Wo immer auch möglich auf private setzen. Da es z.B. für "userList" eine Methode "getUserList()" gibt,
+    kann userList auch private sein.
+     */
+
     val userList = ArrayList<String>()
 
     fun connect() {
@@ -39,16 +47,23 @@ class ClientHandler(private val client: ChatClient) {
             send(getHelloString())
             var message = getServerAwnser(input)
             processHelloAnswer(message)
-
         }
     }
 
     suspend fun getServerAwnser(input: BufferedReader): String {
         var serverAnswer: String
+
+        /*
+        TODO:
+        Unnötig, da input.readLine() solange blockiert, bis eine Antwort kommt.
+        Also ist die While-Schleife nur 1x aktiv und braucht es gar nicht.
+        Ich würde das nicht in einer separaten Funktion machen, sondern direkt in die connect()-Methode einbinden (übersichtlicher)
+         */
+
         do {
             serverAnswer = input.readLine()
             delay(100)
-        } while(serverAnswer.isEmpty())
+        } while (serverAnswer.isEmpty())
         return serverAnswer
     }
 
@@ -237,6 +252,10 @@ class ClientHandler(private val client: ChatClient) {
         return jsonObj.toString()
     }
 
+    /*
+    TODO:
+    Ich würde das auch direkt in der Connect Methode machen.
+     */
     fun processHelloAnswer(message: String) {
         val users = JSONArray(message)
         for(user in users) {

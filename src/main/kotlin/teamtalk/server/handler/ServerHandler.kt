@@ -17,10 +17,12 @@ import org.json.JSONObject
 import teamtalk.jsonUtil
 import teamtalk.server.logger.log
 import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.SocketException
 
 class ServerHandler(private val server: ChatServer) {
 
@@ -34,23 +36,29 @@ class ServerHandler(private val server: ChatServer) {
             log("Der Server wurde gestartet (${server.getIP()}, port ${server.getPort()})")
 
             while (true) {
-                val socket = serverSocket.accept()
-                log("New Client connected: ${socket.inetAddress.hostAddress}")
+                try {
+                    val socket = serverSocket.accept()
+                    log("New Client connected: ${socket.inetAddress.hostAddress}")
 
-                launch {
-                    val output = PrintWriter(socket.getOutputStream())
-                    val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+                    launch {
+                        val output = PrintWriter(socket.getOutputStream())
+                        val input = BufferedReader(InputStreamReader(socket.getInputStream()))
 
-                    process(input.readLine(), socket, input, output)
+                        process(input.readLine(), socket, input, output)
+                    }
+                } catch(e: SocketException) {
+                    log("Socket closed")
+                    break
                 }
             }
         }
     }
+
     fun getUserDataString(): String {
         val users = arrayListOf("Raphaelel Hegi", "Lukas Ledergerber", "Yannick Meier")
         val jsonList = JSONArray()
         var listCounter = 0
-        for(user in users) {
+        for (user in users) {
             jsonList.put(listCounter, user)
             listCounter++
         }
@@ -89,7 +97,11 @@ class ServerHandler(private val server: ChatServer) {
                         start()
                     }
                 })
-                children.add(Button("Stop"))
+                children.add(Button("Stop").also {
+                    it.setOnAction {
+                        stop()
+                    }
+                })
                 padding = Insets(10.0)
                 spacing = 10.0
                 alignment = Pos.CENTER_LEFT
@@ -125,14 +137,14 @@ class ServerHandler(private val server: ChatServer) {
         return statsPane
     }
 
-    fun process(receivedString: String, socket: Socket, intput: BufferedReader, output: PrintWriter) {
+    fun process(receivedString: String, socket: Socket, input: BufferedReader, output: PrintWriter) {
         if (jsonUtil.isJSON(receivedString)) {
             val jsonObj = JSONObject(receivedString)
 
             when (jsonObj.get("type")) {
                 "HELLO" -> {
                     getUserDataString()
-                    output.println(getUserDataString().toString())
+                    output.println(getUserDataString())
                     output.flush()
                 }
 
@@ -154,6 +166,20 @@ class ServerHandler(private val server: ChatServer) {
 
                 }
             }
+        }
+    }
+
+    fun stop() {
+        try {
+            for (client in server.getClients()) {
+                client.getInput().close()
+                client.getOutput().close()
+                client.getSocket().close()
+            }
+        } catch (e: Exception) {
+
+        } finally {
+            serverSocket.close()
         }
     }
 }
