@@ -34,6 +34,7 @@ class ClientHandler(private val client: ChatClient) {
                 input = BufferedReader(InputStreamReader(socket.getInputStream()))
 
                 send(getHelloString())
+                input.readLine()
 
                 val receiveString = input.readLine()
                 println(receiveString)
@@ -221,6 +222,15 @@ class ClientHandler(private val client: ChatClient) {
         val jsonObj = JSONObject()
         with(jsonObj) {
             put("type", "HELLO")
+        }
+
+        return jsonObj.toString()
+    }
+
+    fun getLoginString(): String {
+        val jsonObj = JSONObject()
+        with(jsonObj) {
+            put("type", "LOGIN")
             put("uuid", client.getUUID())
             put("username", client.getUsername())
         }
