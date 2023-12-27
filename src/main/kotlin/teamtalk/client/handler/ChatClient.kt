@@ -15,18 +15,21 @@ class ChatClient {
     private val handler = ClientHandler(this)
 
     fun start() {
-        try {
-            handler.connect()
-        }
-        catch (e: IOException) {
-            println("Verbindung zum Sever fehlgeschlagen")
-        }
+        handler.connect()
     }
 
     fun getHandler(): ClientHandler = handler
 
+    fun getConnectStatus(): Boolean {
+        return handler.getConnectStatus()
+    }
+
+    fun isUserListStatus(): Boolean {
+        return handler.isUserListStatus()
+    }
+
     fun getUserList(): ArrayList<String> {
-        return handler.userList
+        return handler.getUserList()
     }
     fun getUsername(): String = username
 

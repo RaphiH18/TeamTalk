@@ -19,52 +19,63 @@ import javafx.scene.layout.VBox
 import javafx.scene.text.Font
 import kotlinx.coroutines.*
 import org.json.JSONArray
+import java.io.IOException
 
 class ClientHandler(private val client: ChatClient) {
-
     private lateinit var socket: Socket
     private lateinit var output: PrintWriter
     private lateinit var input: BufferedReader
-
     private val handlerScope = CoroutineScope(Dispatchers.IO)
-
-    /*
-    TODO:
-    Wo immer auch möglich auf private setzen. Da es z.B. für "userList" eine Methode "getUserList()" gibt,
-    kann userList auch private sein.
-     */
-
-    val userList = ArrayList<String>()
+    private val userList = ArrayList<String>()
+    private var userListStatus = false
+    private var connectStatus = false
 
     fun connect() {
         handlerScope.launch {
-            socket = Socket("localhost", 4444)
+            while(true){
+                try{
+                    println("Versuche Verbindung zum Serverherzustellen..")
+                    socket = Socket("localhost", 4444)
+                    println("Verbindung erfolgreich hergestellt")
+                    connectStatus = true
+                    break
+                } catch(e: IOException) {
+                    println("Verbindung zum Server fehlgeschlagen")
+                }
+                delay(500)
+            }
             output = PrintWriter(socket.getOutputStream())
             input = BufferedReader(InputStreamReader(socket.getInputStream()))
 
 
             //Initial HELLO - ReciveAvailableUsers
             send(getHelloString())
-            var message = getServerAwnser(input)
-            processHelloAnswer(message)
+            var message = input.readLine()
+            val users = JSONArray(message)
+            for (user in users) {
+                userList.add(user.toString())
+            }
+            userListStatus = true
         }
     }
 
-    suspend fun getServerAwnser(input: BufferedReader): String {
-        var serverAnswer: String
+    fun isUserListStatus(): Boolean{
+        while(!getUserListStatus()){
+            handlerScope.launch {
+                delay(100)
+            }
+        }
+        return getUserListStatus()
+    }
 
-        /*
-        TODO:
-        Unnötig, da input.readLine() solange blockiert, bis eine Antwort kommt.
-        Also ist die While-Schleife nur 1x aktiv und braucht es gar nicht.
-        Ich würde das nicht in einer separaten Funktion machen, sondern direkt in die connect()-Methode einbinden (übersichtlicher)
-         */
-
-        do {
-            serverAnswer = input.readLine()
-            delay(100)
-        } while (serverAnswer.isEmpty())
-        return serverAnswer
+    fun getConnectStatus(): Boolean{
+        return connectStatus
+    }
+    fun getUserListStatus(): Boolean{
+        return userListStatus
+    }
+    fun getUserList(): ArrayList<String> {
+        return userList
     }
 
     fun createContactView(): Node {
@@ -78,15 +89,15 @@ class ClientHandler(private val client: ChatClient) {
 
     fun createChattingView(): Node {
 
-        val currentUserLbl = Label("Lukas Ledergerber").apply{
+        val currentUserLbl = Label("Lukas Ledergerber").apply {
             prefHeight = 50.0
             prefWidth = 580.0
             font = Font("Arial", 24.0)
             style = ("-fx-background-color: #aaaaaa;");
-            alignment= Pos.CENTER
+            alignment = Pos.CENTER
         }
 
-        val outputChatTa = TextArea("Chatfenster...").apply{
+        val outputChatTa = TextArea("Chatfenster...").apply {
             prefHeight = 300.0
             prefWidth = 280.0
         }
@@ -96,20 +107,20 @@ class ClientHandler(private val client: ChatClient) {
             prefWidth = 280.0
         }
 
-        val inputChatVb = VBox().apply{
+        val inputChatVb = VBox().apply {
             padding = Insets(40.0, 0.0, 25.0, 0.0)
             children.add(inputChatTa)
         }
 
-        val sendChatBtn = Button("Senden").apply{
+        val sendChatBtn = Button("Senden").apply {
             padding = Insets(0.0, 0.0, 0.0, 0.0)
             prefHeight = 30.0
             prefWidth = 280.0
         }
 
-        val chatContentVb = VBox().apply{
-            padding = Insets(10.0,0.0,10.0,0.0)
-            with(children){
+        val chatContentVb = VBox().apply {
+            padding = Insets(10.0, 0.0, 10.0, 0.0)
+            with(children) {
                 add(outputChatTa)
                 add(inputChatVb)
                 add(sendChatBtn)
@@ -149,7 +160,7 @@ class ClientHandler(private val client: ChatClient) {
 
         val receiveContentVb = VBox().apply {
             prefHeight = 390.0
-            padding = Insets(5.0 ,0.0 ,0.0, 20.0)
+            padding = Insets(5.0, 0.0, 0.0, 20.0)
             with(children) {
                 add(receiveLbl)
                 add(testFile1Vb)
@@ -177,26 +188,26 @@ class ClientHandler(private val client: ChatClient) {
             prefWidth = 170.0
         }
 
-        val filePickerVb = VBox().apply{
+        val filePickerVb = VBox().apply {
             padding = Insets(0.0, 5.0, 0.0, 0.0)
             children.add(filePickerBtn)
         }
 
-        val sendDataBtn = Button("Senden").apply{
+        val sendDataBtn = Button("Senden").apply {
             prefHeight = 30.0
             prefWidth = 75.0
         }
 
         val chooseSentHb = HBox().apply {
             padding = Insets(5.0, 0.0, 0.0, 0.0)
-            with(children){
+            with(children) {
                 add(filePickerVb)
                 add(sendDataBtn)
             }
         }
         val sendContentVb = VBox().apply {
-            padding = Insets(0.0 ,0.0 ,0.0, 20.0)
-            with(children){
+            padding = Insets(0.0, 0.0, 0.0, 20.0)
+            with(children) {
                 add(sendVb)
                 add(chosenFileLbl)
                 add(chooseSentHb)
@@ -204,7 +215,7 @@ class ClientHandler(private val client: ChatClient) {
         }
 
         val dataTransferContentVb = VBox().apply {
-            padding = Insets(10.0 ,0.0 ,0.0, 10.0)
+            padding = Insets(10.0, 0.0, 0.0, 10.0)
             with(children) {
                 add(dataTransferLbl)
                 add(receiveContentVb)
@@ -212,16 +223,16 @@ class ClientHandler(private val client: ChatClient) {
             }
         }
 
-        val allContentDividerHb = HBox().apply{
+        val allContentDividerHb = HBox().apply {
             with(children) {
                 add(chatContentVb)
                 add(dataTransferContentVb)
             }
         }
 
-        val allContentVb = VBox().apply{
+        val allContentVb = VBox().apply {
             padding = Insets(5.0)
-            with(children){
+            with(children) {
                 add(currentUserLbl)
                 add(allContentDividerHb)
             }
@@ -231,7 +242,7 @@ class ClientHandler(private val client: ChatClient) {
     }
 
     fun send(string: String) {
-        if(this::output.isInitialized) {
+        if (this::output.isInitialized) {
             output.println(string)
             output.flush()
         } else {
@@ -251,18 +262,6 @@ class ClientHandler(private val client: ChatClient) {
 
         return jsonObj.toString()
     }
-
-    /*
-    TODO:
-    Ich würde das auch direkt in der Connect Methode machen.
-     */
-    fun processHelloAnswer(message: String) {
-        val users = JSONArray(message)
-        for(user in users) {
-            userList.add(user.toString())
-        }
-    }
-
     fun getLoginString(): String {
         val jsonObj = JSONObject()
         with(jsonObj) {
