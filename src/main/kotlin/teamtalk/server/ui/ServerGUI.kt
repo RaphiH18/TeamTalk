@@ -16,8 +16,6 @@ class ServerGUI : Application() {
             setOnCloseRequest { exitProcess(0) }
             show()
         }
-
-        println("Welcome! The TeamTalk Server is now running")
     }
 
 }

@@ -20,17 +20,11 @@ class ChatClient {
 
     fun getHandler(): ClientHandler = handler
 
-    fun getConnectStatus(): Boolean {
-        return handler.getConnectStatus()
-    }
+    fun isConnected() = handler.isConnected()
 
-    fun isUserListStatus(): Boolean {
-        return handler.isUserListStatus()
-    }
 
-    fun getUserList(): ArrayList<String> {
-        return handler.getUserList()
-    }
+    fun getServerUsers() = handler.getServerUsers()
+
     fun getUsername(): String = username
 
     fun getUUID(): UUID = uuid

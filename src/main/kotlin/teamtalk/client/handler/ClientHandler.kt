@@ -1,12 +1,12 @@
 package teamtalk.client.handler
 
+import javafx.beans.property.SimpleBooleanProperty
 import javafx.collections.FXCollections.observableArrayList
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.control.Button
 import javafx.scene.control.Label
-import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -19,48 +19,66 @@ import javafx.scene.layout.VBox
 import javafx.scene.text.Font
 import kotlinx.coroutines.*
 import org.json.JSONArray
+import org.json.JSONObject
+import teamtalk.client.ClientMessage
+import teamtalk.jsonUtil
+import teamtalk.server.ServerMessage
+import teamtalk.server.handler.ServerClient
+import teamtalk.server.logger
+import teamtalk.server.logger.debug
 import java.io.IOException
+import java.lang.Thread.sleep
 
 class ClientHandler(private val client: ChatClient) {
+
     private lateinit var socket: Socket
     private lateinit var output: PrintWriter
     private lateinit var input: BufferedReader
+
     private val handlerScope = CoroutineScope(Dispatchers.IO)
-    private val userList = ArrayList<String>()
+    private val serverUsers = mutableListOf<String>()
     private var userListStatus = false
-    private var connectStatus = false
 
     fun connect() {
         handlerScope.launch {
-            while(true){
-                try{
-                    println("Versuche Verbindung zum Serverherzustellen..")
+            do {
+                try {
+                    debug("Verbindung zum Server herstellen...")
                     socket = Socket("localhost", 4444)
-                    println("Verbindung erfolgreich hergestellt")
-                    connectStatus = true
+                    debug("Verbindung erfolgreich hergestellt.")
                     break
-                } catch(e: IOException) {
-                    println("Verbindung zum Server fehlgeschlagen")
+                } catch (e: IOException) {
+                    debug("Verbindung zum Server fehlgeschlagen... Neuer Versuch...")
+                    delay(1000)
                 }
-                delay(500)
-            }
+            } while (!(isConnected()))
+
             output = PrintWriter(socket.getOutputStream())
             input = BufferedReader(InputStreamReader(socket.getInputStream()))
 
-
-            //Initial HELLO - ReciveAvailableUsers
-            send(getHelloString())
-            var message = input.readLine()
-            val users = JSONArray(message)
-            for (user in users) {
-                userList.add(user.toString())
-            }
+            send(ClientMessage.HELLO.getJSONString(client))
+            process(input.readLine())
             userListStatus = true
         }
     }
 
-    fun isUserListStatus(): Boolean{
-        while(!getUserListStatus()){
+    private fun process(receivedString: String) {
+        /*
+        TODO: Verarbeitung von verschiedenen Antworten des Servers.
+        Zur Hilfe kann die ClientMessage-Enum verwendet werden.
+         */
+        debug("Von Server erhalten: $receivedString")
+        val jsonObj = JSONObject(receivedString)
+        val jsonUsers = jsonObj.getJSONArray("userList")
+        for (user in jsonUsers) {
+            serverUsers.add(user.toString())
+        }
+
+        userListStatus = true
+    }
+
+    fun isUserListStatus(): Boolean {
+        while (!getUserListStatus()) {
             handlerScope.launch {
                 delay(100)
             }
@@ -68,15 +86,17 @@ class ClientHandler(private val client: ChatClient) {
         return getUserListStatus()
     }
 
-    fun getConnectStatus(): Boolean{
-        return connectStatus
-    }
-    fun getUserListStatus(): Boolean{
+    fun isConnectionReady() = ((::socket.isInitialized) and (::input.isInitialized) and (::output.isInitialized) and (socket.isConnected))
+
+    fun isConnected() = ((::socket.isInitialized && socket.isConnected))
+
+    fun getConnectStatus() = socket.isConnected
+
+    fun getUserListStatus(): Boolean {
         return userListStatus
     }
-    fun getUserList(): ArrayList<String> {
-        return userList
-    }
+
+    fun getServerUsers() = serverUsers
 
     fun createContactView(): Node {
         var contactData = observableArrayList("Lukas Ledergerber", "Yannick Meier", "Raphael Hegi")
@@ -246,54 +266,11 @@ class ClientHandler(private val client: ChatClient) {
             output.println(string)
             output.flush()
         } else {
-            throw IllegalStateException("No connection - please establish connection first.")
+            throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
         }
     }
 
     fun send(file: File) {
 
-    }
-
-    fun getHelloString(): String {
-        val jsonObj = JSONObject()
-        with(jsonObj) {
-            put("type", "HELLO")
-        }
-
-        return jsonObj.toString()
-    }
-    fun getLoginString(): String {
-        val jsonObj = JSONObject()
-        with(jsonObj) {
-            put("type", "LOGIN")
-            put("uuid", client.getUUID())
-            put("username", client.getUsername())
-        }
-
-        return jsonObj.toString()
-    }
-
-    fun getMessageString(message: String, receiverName: String): String {
-        val jsonObj = JSONObject()
-        with(jsonObj) {
-            put("type", "MESSAGE")
-            put("senderUUID", client.getUUID())
-            put("senderName", client.getUsername())
-            put("receiverName", receiverName)
-            put("message", message)
-        }
-
-        return jsonObj.toString()
-    }
-
-    fun getByeString(): String {
-        val jsonObj = JSONObject()
-        with(jsonObj) {
-            put("type", "BYE")
-            put("uuid", client.getUUID())
-            put("username", client.getUsername())
-        }
-
-        return jsonObj.toString()
     }
 }
