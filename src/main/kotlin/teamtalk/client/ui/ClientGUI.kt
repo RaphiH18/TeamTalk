@@ -46,16 +46,6 @@ class ClientGUI : Application() {
             startBenutzerauswahlGUI(stage)
         }
     }
-
-    private fun startMainGUI(stage: Stage, chatClient: ChatClient) {
-        with(stage) {
-            scene = Scene(chatClient.createBaseView(), 800.0, 600.0)
-            title = "TeamTalk Client"
-            setOnCloseRequest { exitProcess(0) }
-            show()
-        }
-    }
-
     private fun startConnectionGUI(stage: Stage) {
         val serverLbl = Label("Server")
         val serverTf = TextField(defaultServerIP)
@@ -151,6 +141,15 @@ class ClientGUI : Application() {
                 startMainGUI(stage, chatClient)
             }
 
+        }
+    }
+
+    private fun startMainGUI(stage: Stage, chatClient: ChatClient) {
+        with(stage) {
+            scene = Scene(chatClient.createBaseView(), 800.0, 600.0)
+            title = "TeamTalk Client"
+            setOnCloseRequest { exitProcess(0) }
+            show()
         }
     }
 }

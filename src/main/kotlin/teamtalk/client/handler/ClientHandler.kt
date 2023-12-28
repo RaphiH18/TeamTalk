@@ -36,6 +36,9 @@ class ClientHandler(private val client: ChatClient) {
     private var userListStatus = false
     private var status = "Bereit"
 
+    private var currentUserLbl = Label()
+    private val outputChatTa = TextArea()
+
     fun connect(server: String, port: Int) {
         var timeoutCounter = 0
         val connectionLimit = 10
@@ -55,7 +58,7 @@ class ClientHandler(private val client: ChatClient) {
                     delay(1000)
 
                     timeoutCounter++
-                    if(timeoutCounter >= connectionLimit) {
+                    if (timeoutCounter >= connectionLimit) {
                         status = "Timeout"
                     }
                 }
@@ -63,7 +66,7 @@ class ClientHandler(private val client: ChatClient) {
 
             send(ClientMessage.HELLO.getJSONString(client))
 
-            while(isConnected()) {
+            while (isConnected()) {
                 process(input.readLine())
             }
         }
@@ -115,7 +118,8 @@ class ClientHandler(private val client: ChatClient) {
         return getUserListStatus()
     }
 
-    fun isConnectionReady() = ((::socket.isInitialized) and (::input.isInitialized) and (::output.isInitialized) and (socket.isConnected))
+    fun isConnectionReady() =
+        ((::socket.isInitialized) and (::input.isInitialized) and (::output.isInitialized) and (socket.isConnected))
 
     fun isConnected() = ((::socket.isInitialized && socket.isConnected))
 
@@ -129,28 +133,49 @@ class ClientHandler(private val client: ChatClient) {
 
     fun getServerUsers() = serverUsers
 
-    fun createContactView(): Node {
-        var contactData = observableArrayList("Lukas Ledergerber", "Yannick Meier", "Raphael Hegi")
+    fun createContactView(currentUser: String): Node {
+        var contactData = observableArrayList<String>()
+        for (user in getServerUsers()) {
+            if (user != currentUser) {
+                contactData.add(user)
+            }
+        }
         val contactList = ListView(contactData).apply {
+            minWidth = 200.0
             maxWidth = 200.0
             prefHeight = 600.0
+            setOnMouseClicked { _ ->
+                var selectedUser = selectionModel.selectedItem
+                setCurrentUserLbl(selectedUser)
+                getCurrentUserChat(selectedUser)
+                //getCurrentUserFiles(selectedUser)
+            }
         }
         return contactList
     }
 
-    fun createChattingView(): Node {
+    fun createChattingView(currentUser: String): Node {
+        var defaultUser: String = ""
+        for (user in getServerUsers()) {
+            if (user != currentUser) {
+                defaultUser = user
+                break
+            }
+        }
 
-        val currentUserLbl = Label("Lukas Ledergerber").apply {
+        currentUserLbl.apply {
             prefHeight = 50.0
             prefWidth = 580.0
             font = Font("Arial", 24.0)
             style = ("-fx-background-color: #aaaaaa;");
             alignment = Pos.CENTER
+            text = defaultUser
         }
 
-        val outputChatTa = TextArea("Chatfenster...").apply {
+        outputChatTa.apply{
             prefHeight = 300.0
             prefWidth = 280.0
+            text = "Chatfenster..."
         }
 
         val inputChatTa = TextArea("Schreiben...").apply {
@@ -290,5 +315,13 @@ class ClientHandler(private val client: ChatClient) {
         }
 
         return allContentVb
+    }
+
+    fun setCurrentUserLbl(newCurrentUser: String) {
+        currentUserLbl.text = newCurrentUser
+    }
+
+    fun getCurrentUserChat(user: String) {
+
     }
 }

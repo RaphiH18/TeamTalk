@@ -25,7 +25,7 @@ class ChatServer(port: Int) {
 
     fun getClients() = clients
 
-    fun getUsers() = mutableListOf("Raphael Hegi", "Lukas Ledergerber", "Yannick Meier")
+    fun getUsers() = mutableListOf("Raphael Hegi", "Lukas Ledergerber", "Yannick Meier", "Budei Babdei", "Sone Anderi Person")
 
     fun getOnlineUsers(): MutableList<String> {
         val onlineUsers = mutableListOf<String>()

@@ -48,8 +48,8 @@ class ChatClient {
         val splitPane = SplitPane()
 
         with(splitPane) {
-            items.addAll(handler.createContactView())
-            items.addAll(handler.createChattingView())
+            items.addAll(handler.createContactView(getUsername()))
+            items.addAll(handler.createChattingView(getUsername()))
         }
 
         splitPane.setDividerPositions(0.3)
