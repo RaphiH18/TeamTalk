@@ -14,14 +14,13 @@ class ChatClient {
 
     private val handler = ClientHandler(this)
 
-    fun start() {
-        handler.connect()
+    fun start(server: String, port: Int) {
+        handler.connect(server, port)
     }
 
     fun getHandler(): ClientHandler = handler
 
     fun isConnected() = handler.isConnected()
-
 
     fun getServerUsers() = handler.getServerUsers()
 

@@ -39,12 +39,12 @@ class ClientHandler(private val client: ChatClient) {
     private val serverUsers = mutableListOf<String>()
     private var userListStatus = false
 
-    fun connect() {
+    fun connect(server: String, port: Int) {
         handlerScope.launch {
             do {
                 try {
-                    debug("Verbindung zum Server herstellen...")
-                    socket = Socket("localhost", 4444)
+                    debug("Verbindung zum Server $server mit Port $port herstellen...")
+                    socket = Socket(server, port)
                     debug("Verbindung erfolgreich hergestellt.")
                     break
                 } catch (e: IOException) {

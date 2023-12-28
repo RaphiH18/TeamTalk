@@ -72,7 +72,6 @@ class ServerHandler(private val server: ChatServer) {
                 setDividerPositions(0.5)
             }
         }
-
         return controlArea
     }
 
