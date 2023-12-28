@@ -19,6 +19,10 @@ class ChatServer(port: Int) {
         handler.start()
     }
 
+    fun stop() {
+        handler.stop()
+    }
+
     fun getIP() = IP
 
     fun getPort() = PORT

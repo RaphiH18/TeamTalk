@@ -7,6 +7,7 @@ import teamtalk.server.handler.ChatServer
 import kotlin.system.exitProcess
 
 class ServerGUI : Application() {
+
     override fun start(stage: Stage) {
         val chatServer = ChatServer(4444)
 
@@ -17,5 +18,4 @@ class ServerGUI : Application() {
             show()
         }
     }
-
 }

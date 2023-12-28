@@ -42,6 +42,7 @@ class ClientHandler(private val client: ChatClient) {
     fun connect(server: String, port: Int) {
         var timeoutCounter = 0
         val connectionLimit = 10
+
         handlerScope.launch {
             do {
                 try {
@@ -62,7 +63,7 @@ class ClientHandler(private val client: ChatClient) {
                         status = "Timeout"
                     }
                 }
-            } while ((!(isConnected())) and (timeoutCounter <= connectionLimit))
+            } while (!(isConnected()) and (timeoutCounter <= connectionLimit))
 
             send(ClientMessage.HELLO.getJSONString(client))
 
@@ -124,8 +125,6 @@ class ClientHandler(private val client: ChatClient) {
     fun isConnected() = ((::socket.isInitialized && socket.isConnected))
 
     fun getStatusMessage() = status
-
-    fun getConnectStatus() = socket.isConnected
 
     fun getUserListStatus(): Boolean {
         return userListStatus

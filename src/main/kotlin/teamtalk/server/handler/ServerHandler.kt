@@ -12,14 +12,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
-import org.json.JSONArray
 import org.json.JSONObject
 import teamtalk.jsonUtil
 import teamtalk.server.ServerMessage
 import teamtalk.server.logger.debug
 import teamtalk.server.logger.log
 import java.io.BufferedReader
-import java.io.IOException
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.ServerSocket
@@ -46,12 +44,10 @@ class ServerHandler(private val server: ChatServer) {
                     debug("Neue eingehende Verbindung: ${socket.inetAddress.hostAddress}")
 
                     launch {
-                        debug("new coroutine for client launched")
                         output = PrintWriter(socket.getOutputStream())
                         input = BufferedReader(InputStreamReader(socket.getInputStream()))
 
-                        while(socket.isConnected) {
-                            debug("waiting for incoming msgs")
+                        while (socket.isConnected) {
                             process(input.readLine(), socket)
                         }
                     }
@@ -81,7 +77,22 @@ class ServerHandler(private val server: ChatServer) {
                 }
 
                 "MESSAGE" -> {
+                    val receiverName = jsonObj.get("receiverName")
+                    var receiverFound = false
 
+                    for (client in server.getClients()) {
+                        if (client.getUsername() == receiverName) {
+                            receiverFound = true
+                            client.getOutput().println(receivedString)
+                            client.getOutput().flush()
+                            send(ServerMessage.MESSAGE_RESPONSE.getJSONString("FORWARDED", this))
+                            break
+                        }
+                    }
+
+                    if (!(receiverFound)) {
+                        send(ServerMessage.MESSAGE_RESPONSE.getJSONString("USER_OFFLINE", this))
+                    }
                 }
 
                 "FILE" -> {
@@ -97,7 +108,7 @@ class ServerHandler(private val server: ChatServer) {
         }
     }
 
-    fun send(string: String) {
+    private fun send(string: String) {
         if (this::output.isInitialized) {
             output.println(string)
             output.flush()
@@ -108,16 +119,20 @@ class ServerHandler(private val server: ChatServer) {
     }
 
     fun stop() {
-        try {
-            for (client in server.getClients()) {
+        for (client in server.getClients()) {
+            try {
                 client.getInput().close()
                 client.getOutput().close()
                 client.getSocket().close()
+            } catch (e: Exception) {
+                log("Fehler beim Schliessen der Client-Verbindung: ${e.message}")
             }
-        } catch (e: Exception) {
-            log("Fehler beim Schliessen der Client-Verbindungen: ${e.message}")
-        } finally {
+        }
+
+        try {
             serverSocket.close()
+        } catch (e: Exception) {
+            log("Fehler beim Schliessen des ServerSockets: ${e.message}")
         }
     }
 
@@ -149,12 +164,12 @@ class ServerHandler(private val server: ChatServer) {
                 children.add(Label("Port: 4444"))
                 children.add(Button("Start").also {
                     it.setOnAction {
-                        start()
+                        server.start()
                     }
                 })
                 children.add(Button("Stop").also {
                     it.setOnAction {
-                        stop()
+                        server.stop()
                     }
                 })
                 padding = Insets(10.0)

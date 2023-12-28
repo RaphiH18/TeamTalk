@@ -119,6 +119,9 @@ class ClientGUI : Application() {
             setOnCloseRequest { exitProcess(0) }
             show()
         }
+
+        Thread.sleep(2000)
+        chatClient.getHandler().send(ClientMessage.MESSAGE.getJSONString(chatClient, "TEST-NACHRICHT", "Raphael Hegi"))
     }
 
     fun startBenutzerauswahlGUI(stage: Stage) {
