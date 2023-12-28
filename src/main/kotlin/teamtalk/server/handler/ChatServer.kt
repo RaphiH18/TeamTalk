@@ -11,10 +11,11 @@ class ChatServer(port: Int) {
 
     private val IP = InetAddress.getLoopbackAddress()
     private val PORT = port
+
     private val clients = mutableListOf<ServerClient>()
     private val handler: ServerHandler = ServerHandler(this)
 
-    suspend fun start() {
+    fun start() {
         handler.start()
     }
 
@@ -23,6 +24,17 @@ class ChatServer(port: Int) {
     fun getPort() = PORT
 
     fun getClients() = clients
+
+    fun getUsers() = mutableListOf("Raphael Hegi", "Lukas Ledergerber", "Yannick Meier")
+
+    fun getOnlineUsers(): MutableList<String> {
+        val onlineUsers = mutableListOf<String>()
+
+        for (client in clients) {
+            onlineUsers.add(client.getUsername())
+        }
+        return onlineUsers
+    }
 
     fun createBaseView() : VBox {
         val vBoxBase = VBox()

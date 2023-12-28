@@ -16,10 +16,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
+import teamtalk.client.ClientMessage
 import teamtalk.client.handler.ChatClient
 import kotlin.system.exitProcess
 
 class ClientGUI : Application() {
+
     private val defaultServerIP = "127.0.0.1"
     private val defaultPort = "4444"
 
@@ -27,6 +29,7 @@ class ClientGUI : Application() {
     private val messageOutputLbl = Label("Bereit")
 
     private val chatClient = ChatClient()
+
     override fun start(stage: Stage) {
         CoroutineScope(Dispatchers.JavaFx).launch {
             startConnectionGUI(stage)
@@ -34,7 +37,7 @@ class ClientGUI : Application() {
                 if (!(chatClient.isConnected())) {
                     messageOutputLbl.text = chatClient.getStatusMessage()
                     delay(100)
-                    if(chatClient.getStatusMessage() == "Timeout") {
+                    if (chatClient.getStatusMessage() == "Timeout") {
                         connectBtn.isDisable = false
                     }
                 } else {
@@ -42,9 +45,11 @@ class ClientGUI : Application() {
                     break
                 }
             }
+            delay(100)
             startBenutzerauswahlGUI(stage)
         }
     }
+
     private fun startMainGUI(stage: Stage, chatClient: ChatClient) {
         with(stage) {
             scene = Scene(chatClient.createBaseView(), 800.0, 600.0)
@@ -139,7 +144,10 @@ class ClientGUI : Application() {
             }
 
             val result = userChoice.showAndWait()
-            result.ifPresent { selected -> println("Selected: $selected") }
+            result.ifPresent {
+                selectedUsername -> chatClient.setUsername(selectedUsername)
+                chatClient.getHandler().send(ClientMessage.LOGIN.getJSONString(chatClient))
+            }
             startMainGUI(stage, chatClient)
         }
     }

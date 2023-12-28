@@ -19,7 +19,10 @@ import javafx.scene.text.Font
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import teamtalk.client.ClientMessage
+import teamtalk.jsonUtil
+import teamtalk.server.logger
 import teamtalk.server.logger.debug
+import teamtalk.server.logger.log
 import java.io.IOException
 
 class ClientHandler(private val client: ChatClient) {
@@ -42,40 +45,65 @@ class ClientHandler(private val client: ChatClient) {
                     debug("Verbindung zum Server $server mit Port $port herstellen...")
                     status = "Verbinde..."
                     socket = Socket(server, port)
-                    debug("Verbindung erfolgreich hergestellt.")
                     status = "Verbunden"
+
                     output = PrintWriter(socket.getOutputStream())
                     input = BufferedReader(InputStreamReader(socket.getInputStream()))
-
-                    send(ClientMessage.HELLO.getJSONString(client))
-                    process(input.readLine())
-                    userListStatus = true
-                    break
+                    debug("Verbindung erfolgreich hergestellt.")
                 } catch (e: IOException) {
                     debug("Verbindung zum Server fehlgeschlagen... Neuer Versuch...")
                     delay(1000)
+
                     timeoutCounter++
                     if(timeoutCounter >= connectionLimit) {
                         status = "Timeout"
                     }
                 }
             } while ((!(isConnected())) and (timeoutCounter <= connectionLimit))
+
+            send(ClientMessage.HELLO.getJSONString(client))
+
+            while(isConnected()) {
+                process(input.readLine())
+            }
         }
     }
 
     private fun process(receivedString: String) {
-        /*
-        TODO: Verarbeitung von verschiedenen Antworten des Servers.
-        Zur Hilfe kann die ClientMessage-Enum verwendet werden.
-         */
-        debug("Von Server erhalten: $receivedString")
-        val jsonObj = JSONObject(receivedString)
-        val jsonUsers = jsonObj.getJSONArray("userList")
-        for (user in jsonUsers) {
-            serverUsers.add(user.toString())
-        }
+        debug("<- Von Server erhalten: $receivedString")
 
-        userListStatus = true
+        if (jsonUtil.isJSON(receivedString)) {
+            val jsonObj = JSONObject(receivedString)
+
+            when (jsonObj.get("type")) {
+                "HELLO_RESPONSE" -> {
+                    val jsonUsers = jsonObj.getJSONArray("userList")
+                    for (user in jsonUsers) {
+                        serverUsers.add(user.toString())
+                    }
+
+                    userListStatus = true
+                }
+            }
+        } else {
+            log("Warnung beim Verarbeiten der Nachricht: Kein JSON-Objekt.")
+        }
+    }
+
+    fun send(string: String) {
+        handlerScope.launch {
+            if (isConnectionReady()) {
+                output.println(string)
+                output.flush()
+                debug("-> An Server gesendet: $string")
+            } else {
+                throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
+            }
+        }
+    }
+
+    fun send(file: File) {
+
     }
 
     fun isUserListStatus(): Boolean {
@@ -92,6 +120,7 @@ class ClientHandler(private val client: ChatClient) {
     fun isConnected() = ((::socket.isInitialized && socket.isConnected))
 
     fun getStatusMessage() = status
+
     fun getConnectStatus() = socket.isConnected
 
     fun getUserListStatus(): Boolean {
@@ -261,18 +290,5 @@ class ClientHandler(private val client: ChatClient) {
         }
 
         return allContentVb
-    }
-
-    fun send(string: String) {
-        if (this::output.isInitialized) {
-            output.println(string)
-            output.flush()
-        } else {
-            throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
-        }
-    }
-
-    fun send(file: File) {
-
     }
 }

@@ -13,7 +13,15 @@ enum class ServerMessage {
         return JSONObject().apply {
             put("type", type)
             put("status", status)
-            put("userList", JSONArray(serverHandler.getUsers()))
+
+            when(type) {
+                "HELLO_RESPONSE" -> {
+                    put("userList", JSONArray(serverHandler.getServer().getUsers()))
+                }
+                "LOGIN_RESPONSE" -> {
+                    put("onlineUserList", JSONArray(serverHandler.getServer().getOnlineUsers()))
+                }
+            }
         }.toString()
     }
 }

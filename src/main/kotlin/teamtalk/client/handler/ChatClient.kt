@@ -7,7 +7,7 @@ import java.util.UUID
 class ChatClient {
 
     private val uuid: UUID = UUID.randomUUID()
-    private val username: String = "Max"
+    private var username: String = ""
 
     private val handler = ClientHandler(this)
 
@@ -16,6 +16,7 @@ class ChatClient {
     }
 
     fun getStatusMessage() = handler.getStatusMessage()
+
     fun getHandler(): ClientHandler = handler
 
     fun isConnected() = handler.isConnected()
@@ -23,6 +24,10 @@ class ChatClient {
     fun getServerUsers() = handler.getServerUsers()
 
     fun getUsername(): String = username
+
+    fun setUsername(newUsername: String) {
+        username = newUsername
+    }
 
     fun getUUID(): UUID = uuid
 
