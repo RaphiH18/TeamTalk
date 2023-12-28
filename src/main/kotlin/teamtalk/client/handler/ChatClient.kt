@@ -1,10 +1,7 @@
 package teamtalk.client.handler
 
-import javafx.geometry.Insets
 import javafx.scene.control.*
 import javafx.scene.layout.VBox
-import java.io.IOException
-import java.util.ArrayList
 import java.util.UUID
 
 class ChatClient {
@@ -18,6 +15,7 @@ class ChatClient {
         handler.connect(server, port)
     }
 
+    fun getStatusMessage() = handler.getStatusMessage()
     fun getHandler(): ClientHandler = handler
 
     fun isConnected() = handler.isConnected()

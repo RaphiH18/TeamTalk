@@ -1,6 +1,5 @@
 package teamtalk.client.handler
 
-import javafx.beans.property.SimpleBooleanProperty
 import javafx.collections.FXCollections.observableArrayList
 import javafx.geometry.Insets
 import javafx.geometry.Pos
@@ -18,16 +17,10 @@ import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.text.Font
 import kotlinx.coroutines.*
-import org.json.JSONArray
 import org.json.JSONObject
 import teamtalk.client.ClientMessage
-import teamtalk.jsonUtil
-import teamtalk.server.ServerMessage
-import teamtalk.server.handler.ServerClient
-import teamtalk.server.logger
 import teamtalk.server.logger.debug
 import java.io.IOException
-import java.lang.Thread.sleep
 
 class ClientHandler(private val client: ChatClient) {
 
@@ -38,27 +31,35 @@ class ClientHandler(private val client: ChatClient) {
     private val handlerScope = CoroutineScope(Dispatchers.IO)
     private val serverUsers = mutableListOf<String>()
     private var userListStatus = false
+    private var status = "Bereit"
 
     fun connect(server: String, port: Int) {
+        var timeoutCounter = 0
+        val connectionLimit = 10
         handlerScope.launch {
             do {
                 try {
                     debug("Verbindung zum Server $server mit Port $port herstellen...")
+                    status = "Verbinde..."
                     socket = Socket(server, port)
                     debug("Verbindung erfolgreich hergestellt.")
+                    status = "Verbunden"
+                    output = PrintWriter(socket.getOutputStream())
+                    input = BufferedReader(InputStreamReader(socket.getInputStream()))
+
+                    send(ClientMessage.HELLO.getJSONString(client))
+                    process(input.readLine())
+                    userListStatus = true
                     break
                 } catch (e: IOException) {
                     debug("Verbindung zum Server fehlgeschlagen... Neuer Versuch...")
                     delay(1000)
+                    timeoutCounter++
+                    if(timeoutCounter >= connectionLimit) {
+                        status = "Timeout"
+                    }
                 }
-            } while (!(isConnected()))
-
-            output = PrintWriter(socket.getOutputStream())
-            input = BufferedReader(InputStreamReader(socket.getInputStream()))
-
-            send(ClientMessage.HELLO.getJSONString(client))
-            process(input.readLine())
-            userListStatus = true
+            } while ((!(isConnected())) and (timeoutCounter <= connectionLimit))
         }
     }
 
@@ -90,6 +91,7 @@ class ClientHandler(private val client: ChatClient) {
 
     fun isConnected() = ((::socket.isInitialized && socket.isConnected))
 
+    fun getStatusMessage() = status
     fun getConnectStatus() = socket.isConnected
 
     fun getUserListStatus(): Boolean {
