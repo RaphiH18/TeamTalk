@@ -4,10 +4,7 @@ import javafx.application.Application
 import javafx.application.Platform
 import javafx.geometry.Insets
 import javafx.scene.Scene
-import javafx.scene.control.Button
-import javafx.scene.control.ChoiceDialog
-import javafx.scene.control.Label
-import javafx.scene.control.TextField
+import javafx.scene.control.*
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
@@ -136,19 +133,24 @@ class ClientGUI : Application() {
 
     fun startBenutzerauswahlGUI(stage: Stage) {
         Platform.runLater {
-            val userChoice: ChoiceDialog<String> = ChoiceDialog("", chatClient.getServerUsers())
+            var userChoice: ChoiceDialog<String> = ChoiceDialog()
+            while (userChoice.items.isEmpty()){
+                userChoice = ChoiceDialog(chatClient.getServerUsers().first(), chatClient.getServerUsers())
+            }
             with(userChoice) {
                 setTitle("Benutzerauswahl")
                 setHeaderText(null)
                 setContentText("Benutzername:")
+                dialogPane.lookupButton(ButtonType.CANCEL).setVisible(false)
             }
 
             val result = userChoice.showAndWait()
             result.ifPresent {
                 selectedUsername -> chatClient.setUsername(selectedUsername)
                 chatClient.getHandler().send(ClientMessage.LOGIN.getJSONString(chatClient))
+                startMainGUI(stage, chatClient)
             }
-            startMainGUI(stage, chatClient)
+
         }
     }
 }
