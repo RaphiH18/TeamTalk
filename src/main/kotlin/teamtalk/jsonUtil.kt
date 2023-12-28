@@ -1,5 +1,6 @@
 package teamtalk
 
+import org.json.JSONArray
 import org.json.JSONObject
 
 object jsonUtil {

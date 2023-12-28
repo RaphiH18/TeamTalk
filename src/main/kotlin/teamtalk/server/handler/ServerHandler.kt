@@ -5,44 +5,55 @@ import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.control.*
 import javafx.scene.layout.AnchorPane
-import javafx.scene.layout.GridPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.shape.Circle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import org.json.JSONObject
 import teamtalk.jsonUtil
+import teamtalk.server.ServerMessage
+import teamtalk.server.logger.debug
 import teamtalk.server.logger.log
 import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.SocketException
 
 class ServerHandler(private val server: ChatServer) {
 
     private lateinit var serverSocket: ServerSocket
+    private lateinit var output: PrintWriter
+    private lateinit var input: BufferedReader
+
     private val guiScope = CoroutineScope(Dispatchers.JavaFx)
     private val handlerScope = CoroutineScope(Dispatchers.IO)
 
     fun start() {
         handlerScope.launch {
             serverSocket = ServerSocket(server.getPort(), 20, server.getIP())
-            log("Der Server wurde gestartet (${server.getIP()}, port ${server.getPort()})")
+            log("Der Server wurde gestartet (IP: ${server.getIP()}, Port: ${server.getPort()})")
 
             while (true) {
-                val socket = serverSocket.accept()
-                log("New Client connected: ${socket.inetAddress.hostAddress}")
+                try {
+                    val socket = serverSocket.accept()
+                    log("Neue eingehende Verbindung: ${socket.inetAddress.hostAddress}")
 
-                launch {
-                    val output = PrintWriter(socket.getOutputStream())
-                    val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+                    launch {
+                        output = PrintWriter(socket.getOutputStream())
+                        input = BufferedReader(InputStreamReader(socket.getInputStream()))
 
-                    process(input.readLine(), socket)
+                        process(input.readLine(), socket)
+                    }
+                } catch (e: SocketException) {
+                    log("Der Server wurde beendet (Socket closed).")
+                    break
                 }
             }
         }
@@ -61,7 +72,6 @@ class ServerHandler(private val server: ChatServer) {
                 setDividerPositions(0.5)
             }
         }
-
         return controlArea
     }
 
@@ -69,9 +79,9 @@ class ServerHandler(private val server: ChatServer) {
         val handlerTabPane = TabPane().apply {
             prefWidth = 400.0
 
-            val dbAnchPane = VBox()
+            val dashboard = VBox()
 
-            dbAnchPane.children.add(HBox().apply {
+            dashboard.children.add(HBox().apply {
                 children.add(Circle(4.0))
                 children.add(Label("Server"))
                 children.add(Label("Port: 4444"))
@@ -80,7 +90,11 @@ class ServerHandler(private val server: ChatServer) {
                         start()
                     }
                 })
-                children.add(Button("Stop"))
+                children.add(Button("Stop").also {
+                    it.setOnAction {
+                        stop()
+                    }
+                })
                 padding = Insets(10.0)
                 spacing = 10.0
                 alignment = Pos.CENTER_LEFT
@@ -93,7 +107,7 @@ class ServerHandler(private val server: ChatServer) {
             with(tabs) {
                 add(Tab("Dashboard").apply {
                     isClosable = false
-                    content = dbAnchPane
+                    content = dashboard
                 })
 
                 add(Tab("Einstellungen").apply {
@@ -116,19 +130,34 @@ class ServerHandler(private val server: ChatServer) {
         return statsPane
     }
 
-    fun process(receivedString: String, socket: Socket) {
+    fun send(string: String) {
+        if (this::output.isInitialized) {
+            output.println(string)
+            output.flush()
+            debug("An Client gesendet: $string")
+        } else {
+            throw IllegalStateException("Server nicht gestartet - bitte Server erst starten.")
+        }
+    }
+
+    private fun process(receivedString: String, socket: Socket) {
         if (jsonUtil.isJSON(receivedString)) {
             val jsonObj = JSONObject(receivedString)
 
             when (jsonObj.get("type")) {
                 "HELLO" -> {
+                    debug("Erhalten: HELLO von ${socket.inetAddress}")
+                    debug(ServerMessage.HELLO_RESPONSE.getJSONString("SUCESS", this))
 
+                    send(ServerMessage.HELLO_RESPONSE.getJSONString("SUCCESS", this))
                 }
 
                 "LOGIN" -> {
+                    debug("LOGIN-Nachricht von ${socket.inetAddress} erhalten.")
+
                     val client = ServerClient(socket, jsonObj.get("username").toString())
                     server.getClients().add(client)
-                    log("Connection between client (${client.getUsername()}) and server successfully established!")
+                    log("Verbindung zwischen (${client.getUsername()}) und dem Server erfolgreich aufgebaut.")
                 }
 
                 "MESSAGE" -> {
@@ -143,6 +172,24 @@ class ServerHandler(private val server: ChatServer) {
 
                 }
             }
+        } else {
+            log("Warnung beim Verarbeiten der Nachricht: Kein JSON-Objekt.")
+        }
+    }
+
+    fun getUsers() = arrayListOf("Raphael Hegi", "Lukas Ledergerber", "Yannick Meier")
+
+    fun stop() {
+        try {
+            for (client in server.getClients()) {
+                client.getInput().close()
+                client.getOutput().close()
+                client.getSocket().close()
+            }
+        } catch (e: Exception) {
+            log("Fehler beim Schliessen der Client-Verbindungen: ${e.message}")
+        } finally {
+            serverSocket.close()
         }
     }
 }

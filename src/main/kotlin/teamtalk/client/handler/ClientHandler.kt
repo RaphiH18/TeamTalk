@@ -6,9 +6,6 @@ import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.control.Button
 import javafx.scene.control.Label
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -19,6 +16,11 @@ import javafx.scene.control.TextArea
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.text.Font
+import kotlinx.coroutines.*
+import org.json.JSONObject
+import teamtalk.client.ClientMessage
+import teamtalk.server.logger.debug
+import java.io.IOException
 
 class ClientHandler(private val client: ChatClient) {
 
@@ -26,21 +28,77 @@ class ClientHandler(private val client: ChatClient) {
     private lateinit var output: PrintWriter
     private lateinit var input: BufferedReader
 
-    suspend fun connect() {
-        coroutineScope {
-            launch {
-                socket = Socket("localhost", 4444)
-                output = PrintWriter(socket.getOutputStream())
-                input = BufferedReader(InputStreamReader(socket.getInputStream()))
+    private val handlerScope = CoroutineScope(Dispatchers.IO)
+    private val serverUsers = mutableListOf<String>()
+    private var userListStatus = false
+    private var status = "Bereit"
 
-                send(getHelloString())
-                input.readLine()
+    fun connect(server: String, port: Int) {
+        var timeoutCounter = 0
+        val connectionLimit = 10
+        handlerScope.launch {
+            do {
+                try {
+                    debug("Verbindung zum Server $server mit Port $port herstellen...")
+                    status = "Verbinde..."
+                    socket = Socket(server, port)
+                    debug("Verbindung erfolgreich hergestellt.")
+                    status = "Verbunden"
+                    output = PrintWriter(socket.getOutputStream())
+                    input = BufferedReader(InputStreamReader(socket.getInputStream()))
 
-                val receiveString = input.readLine()
-                println(receiveString)
-            }
+                    send(ClientMessage.HELLO.getJSONString(client))
+                    process(input.readLine())
+                    userListStatus = true
+                    break
+                } catch (e: IOException) {
+                    debug("Verbindung zum Server fehlgeschlagen... Neuer Versuch...")
+                    delay(1000)
+                    timeoutCounter++
+                    if(timeoutCounter >= connectionLimit) {
+                        status = "Timeout"
+                    }
+                }
+            } while ((!(isConnected())) and (timeoutCounter <= connectionLimit))
         }
     }
+
+    private fun process(receivedString: String) {
+        /*
+        TODO: Verarbeitung von verschiedenen Antworten des Servers.
+        Zur Hilfe kann die ClientMessage-Enum verwendet werden.
+         */
+        debug("Von Server erhalten: $receivedString")
+        val jsonObj = JSONObject(receivedString)
+        val jsonUsers = jsonObj.getJSONArray("userList")
+        for (user in jsonUsers) {
+            serverUsers.add(user.toString())
+        }
+
+        userListStatus = true
+    }
+
+    fun isUserListStatus(): Boolean {
+        while (!getUserListStatus()) {
+            handlerScope.launch {
+                delay(100)
+            }
+        }
+        return getUserListStatus()
+    }
+
+    fun isConnectionReady() = ((::socket.isInitialized) and (::input.isInitialized) and (::output.isInitialized) and (socket.isConnected))
+
+    fun isConnected() = ((::socket.isInitialized && socket.isConnected))
+
+    fun getStatusMessage() = status
+    fun getConnectStatus() = socket.isConnected
+
+    fun getUserListStatus(): Boolean {
+        return userListStatus
+    }
+
+    fun getServerUsers() = serverUsers
 
     fun createContactView(): Node {
         var contactData = observableArrayList("Lukas Ledergerber", "Yannick Meier", "Raphael Hegi")
@@ -53,15 +111,15 @@ class ClientHandler(private val client: ChatClient) {
 
     fun createChattingView(): Node {
 
-        val currentUserLbl = Label("Lukas Ledergerber").apply{
+        val currentUserLbl = Label("Lukas Ledergerber").apply {
             prefHeight = 50.0
             prefWidth = 580.0
             font = Font("Arial", 24.0)
             style = ("-fx-background-color: #aaaaaa;");
-            alignment= Pos.CENTER
+            alignment = Pos.CENTER
         }
 
-        val outputChatTa = TextArea("Chatfenster...").apply{
+        val outputChatTa = TextArea("Chatfenster...").apply {
             prefHeight = 300.0
             prefWidth = 280.0
         }
@@ -71,20 +129,20 @@ class ClientHandler(private val client: ChatClient) {
             prefWidth = 280.0
         }
 
-        val inputChatVb = VBox().apply{
+        val inputChatVb = VBox().apply {
             padding = Insets(40.0, 0.0, 25.0, 0.0)
             children.add(inputChatTa)
         }
 
-        val sendChatBtn = Button("Senden").apply{
+        val sendChatBtn = Button("Senden").apply {
             padding = Insets(0.0, 0.0, 0.0, 0.0)
             prefHeight = 30.0
             prefWidth = 280.0
         }
 
-        val chatContentVb = VBox().apply{
-            padding = Insets(10.0,0.0,10.0,0.0)
-            with(children){
+        val chatContentVb = VBox().apply {
+            padding = Insets(10.0, 0.0, 10.0, 0.0)
+            with(children) {
                 add(outputChatTa)
                 add(inputChatVb)
                 add(sendChatBtn)
@@ -124,7 +182,7 @@ class ClientHandler(private val client: ChatClient) {
 
         val receiveContentVb = VBox().apply {
             prefHeight = 390.0
-            padding = Insets(5.0 ,0.0 ,0.0, 20.0)
+            padding = Insets(5.0, 0.0, 0.0, 20.0)
             with(children) {
                 add(receiveLbl)
                 add(testFile1Vb)
@@ -152,26 +210,26 @@ class ClientHandler(private val client: ChatClient) {
             prefWidth = 170.0
         }
 
-        val filePickerVb = VBox().apply{
+        val filePickerVb = VBox().apply {
             padding = Insets(0.0, 5.0, 0.0, 0.0)
             children.add(filePickerBtn)
         }
 
-        val sendDataBtn = Button("Senden").apply{
+        val sendDataBtn = Button("Senden").apply {
             prefHeight = 30.0
             prefWidth = 75.0
         }
 
         val chooseSentHb = HBox().apply {
             padding = Insets(5.0, 0.0, 0.0, 0.0)
-            with(children){
+            with(children) {
                 add(filePickerVb)
                 add(sendDataBtn)
             }
         }
         val sendContentVb = VBox().apply {
-            padding = Insets(0.0 ,0.0 ,0.0, 20.0)
-            with(children){
+            padding = Insets(0.0, 0.0, 0.0, 20.0)
+            with(children) {
                 add(sendVb)
                 add(chosenFileLbl)
                 add(chooseSentHb)
@@ -179,7 +237,7 @@ class ClientHandler(private val client: ChatClient) {
         }
 
         val dataTransferContentVb = VBox().apply {
-            padding = Insets(10.0 ,0.0 ,0.0, 10.0)
+            padding = Insets(10.0, 0.0, 0.0, 10.0)
             with(children) {
                 add(dataTransferLbl)
                 add(receiveContentVb)
@@ -187,16 +245,16 @@ class ClientHandler(private val client: ChatClient) {
             }
         }
 
-        val allContentDividerHb = HBox().apply{
+        val allContentDividerHb = HBox().apply {
             with(children) {
                 add(chatContentVb)
                 add(dataTransferContentVb)
             }
         }
 
-        val allContentVb = VBox().apply{
+        val allContentVb = VBox().apply {
             padding = Insets(5.0)
-            with(children){
+            with(children) {
                 add(currentUserLbl)
                 add(allContentDividerHb)
             }
@@ -206,59 +264,15 @@ class ClientHandler(private val client: ChatClient) {
     }
 
     fun send(string: String) {
-        if(this::output.isInitialized) {
+        if (this::output.isInitialized) {
             output.println(string)
             output.flush()
         } else {
-            throw IllegalStateException("No connection - please establish connection first.")
+            throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
         }
     }
 
     fun send(file: File) {
 
-    }
-
-    fun getHelloString(): String {
-        val jsonObj = JSONObject()
-        with(jsonObj) {
-            put("type", "HELLO")
-        }
-
-        return jsonObj.toString()
-    }
-
-    fun getLoginString(): String {
-        val jsonObj = JSONObject()
-        with(jsonObj) {
-            put("type", "LOGIN")
-            put("uuid", client.getUUID())
-            put("username", client.getUsername())
-        }
-
-        return jsonObj.toString()
-    }
-
-    fun getMessageString(message: String, receiverName: String): String {
-        val jsonObj = JSONObject()
-        with(jsonObj) {
-            put("type", "MESSAGE")
-            put("senderUUID", client.getUUID())
-            put("senderName", client.getUsername())
-            put("receiverName", receiverName)
-            put("message", message)
-        }
-
-        return jsonObj.toString()
-    }
-
-    fun getByeString(): String {
-        val jsonObj = JSONObject()
-        with(jsonObj) {
-            put("type", "BYE")
-            put("uuid", client.getUUID())
-            put("username", client.getUsername())
-        }
-
-        return jsonObj.toString()
     }
 }
