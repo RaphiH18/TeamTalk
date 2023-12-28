@@ -171,7 +171,7 @@ class ClientHandler(private val client: ChatClient) {
             text = defaultUser
         }
 
-        outputChatTa.apply{
+        outputChatTa.apply {
             prefHeight = 300.0
             prefWidth = 280.0
             text = "Chatfenster..."
