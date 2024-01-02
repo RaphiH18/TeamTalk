@@ -7,7 +7,7 @@ import teamtalk.server.handler.ServerHandler
 enum class ServerMessage {
     HELLO_RESPONSE, LOGIN_RESPONSE, MESSAGE, MESSAGE_RESPONSE, FILE_RESPONSE, BYE_RESPONSE;
 
-    fun getJSONString(status: String, serverHandler: ServerHandler): String {
+    fun getJSONString(status: String, serverHandler: ServerHandler, data: String = "", receiverName: String = ""): String {
         val type = this@ServerMessage.toString()
 
         return JSONObject().apply {
@@ -24,8 +24,9 @@ enum class ServerMessage {
                 "LOGIN_RESPONSE" -> {
                     put("onlineUserList", JSONArray(serverHandler.getServer().getOnlineUsers()))
                 }
-                "MESSAGE" -> {
-
+                "MESSAGE_RESPONSE" -> {
+                    put("receiverName" ,receiverName)
+                    put("message", data)
                 }
             }
         }.toString()

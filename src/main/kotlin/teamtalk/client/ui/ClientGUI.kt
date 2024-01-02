@@ -44,6 +44,7 @@ class ClientGUI : Application() {
             }
             delay(100)
             startBenutzerauswahlGUI(stage)
+
         }
     }
     private fun startConnectionGUI(stage: Stage) {

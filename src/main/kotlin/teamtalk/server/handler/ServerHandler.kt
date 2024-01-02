@@ -77,15 +77,18 @@ class ServerHandler(private val server: ChatServer) {
                 }
 
                 "MESSAGE" -> {
-                    val receiverName = jsonObj.get("receiverName")
+                    val receiverName = jsonObj.get("receiverName").toString()
+                    val message =  jsonObj.get("message").toString()
                     var receiverFound = false
-
                     for (client in server.getClients()) {
-                        if (client.getUsername() == receiverName) {
+                        if (client.getUsername() == receiverName.toString()) {
+                            println("client.getUsername(): ${client.getUsername()} == receiverName: ${receiverName}")
                             receiverFound = true
+
                             client.getOutput().println(receivedString)
                             client.getOutput().flush()
-                            send(ServerMessage.MESSAGE_RESPONSE.getJSONString("FORWARDED", this))
+
+                            send(ServerMessage.MESSAGE_RESPONSE.getJSONString("FORWARDED", this, message, receiverName))
                             break
                         }
                     }
@@ -109,6 +112,7 @@ class ServerHandler(private val server: ChatServer) {
     }
 
     private fun send(string: String) {
+        println("Verarbeite Send: ${String}")
         if (this::output.isInitialized) {
             output.println(string)
             output.flush()

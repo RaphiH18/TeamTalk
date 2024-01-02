@@ -15,6 +15,7 @@ class ChatClient {
         handler.connect(server, port)
     }
 
+    //fun getChatClient() = this
     fun getStatusMessage() = handler.getStatusMessage()
 
     fun getHandler(): ClientHandler = handler
@@ -27,6 +28,7 @@ class ChatClient {
 
     fun setUsername(newUsername: String) {
         username = newUsername
+        handler.setCurrentUser(username)
     }
 
     fun getUUID(): UUID = uuid

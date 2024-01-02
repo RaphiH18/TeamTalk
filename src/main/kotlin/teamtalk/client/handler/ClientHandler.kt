@@ -19,31 +19,41 @@ import javafx.scene.text.Font
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import teamtalk.client.ClientMessage
+import teamtalk.client.message.Contact
 import teamtalk.jsonUtil
-import teamtalk.server.logger
 import teamtalk.server.logger.debug
 import teamtalk.server.logger.log
 import java.io.IOException
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 class ClientHandler(private val client: ChatClient) {
 
     private lateinit var socket: Socket
     private lateinit var output: PrintWriter
     private lateinit var input: BufferedReader
+    private lateinit var chatClient: ChatClient
 
     private val handlerScope = CoroutineScope(Dispatchers.IO)
     private val serverUsers = mutableListOf<String>()
     private var userListStatus = false
     private var status = "Bereit"
 
+    private var currentUser = ""
+
     private var currentUserLbl = Label()
     private val outputChatTa = TextArea()
+    val sendChatBtn = Button("Senden")
+
+    private val contacts = mutableListOf<Contact>()
 
     fun connect(server: String, port: Int) {
         var timeoutCounter = 0
         val connectionLimit = 10
 
         handlerScope.launch {
+            chatClient = ChatClient()
             do {
                 try {
                     debug("Verbindung zum Server $server mit Port $port herstellen...")
@@ -85,8 +95,25 @@ class ClientHandler(private val client: ChatClient) {
                     for (user in jsonUsers) {
                         serverUsers.add(user.toString())
                     }
+                    createContacts()
 
                     userListStatus = true
+                }
+
+                "MESSAGE_RESPONSE" -> { // Bestätigung für Nachrichtenversand (Falls notwendig)
+                    println("MESSAGE_RESPONSE aufgerufen mit $jsonObj")
+                    //val jsonMessage = jsonObj.get("message")
+                    //println("MESSAGE_RESPONSE Erhaltene Nachricht: $jsonMessage")
+                    addMessageToContact(jsonObj)
+                    updateGuiMessagesFromContact(currentUser)
+                }
+
+                "MESSAGE" -> {
+                    println("MESSAGE aufgerufen mit $jsonObj")
+                    //val jsonMessage = jsonObj.get("message")
+                    //println("Erhaltene Message: $jsonMessage")
+                    addMessageToContact(jsonObj)
+                    updateGuiMessagesFromContact(jsonObj.get("receiverName").toString())
                 }
             }
         } else {
@@ -135,9 +162,10 @@ class ClientHandler(private val client: ChatClient) {
     fun createContactView(currentUser: String): Node {
         var contactData = observableArrayList<String>()
         for (user in getServerUsers()) {
-            if (user != currentUser) {
+            contactData.add(user)
+            /*if (user != currentUser) {
                 contactData.add(user)
-            }
+            }*/
         }
         val contactList = ListView(contactData).apply {
             minWidth = 200.0
@@ -146,11 +174,20 @@ class ClientHandler(private val client: ChatClient) {
             setOnMouseClicked { _ ->
                 var selectedUser = selectionModel.selectedItem
                 setCurrentUserLbl(selectedUser)
-                getCurrentUserChat(selectedUser)
-                //getCurrentUserFiles(selectedUser)
+                updateGuiMessagesFromContact(selectedUser)
             }
         }
         return contactList
+    }
+
+    fun createContacts() {
+        for (user in getServerUsers()) {
+            /*if (user != chatClient.getUsername()) {
+                contacts.add(Contact(user))
+            }*/
+            contacts.add(Contact(user))
+        }
+        println("Generierte Kontaktliste: $contacts")
     }
 
     fun createChattingView(currentUser: String): Node {
@@ -175,6 +212,7 @@ class ClientHandler(private val client: ChatClient) {
             prefHeight = 300.0
             prefWidth = 280.0
             text = "Chatfenster..."
+            isEditable = false
         }
 
         val inputChatTa = TextArea("Schreiben...").apply {
@@ -187,10 +225,16 @@ class ClientHandler(private val client: ChatClient) {
             children.add(inputChatTa)
         }
 
-        val sendChatBtn = Button("Senden").apply {
+        sendChatBtn.apply {
             padding = Insets(0.0, 0.0, 0.0, 0.0)
             prefHeight = 30.0
             prefWidth = 280.0
+            setOnAction {
+                if (inputChatTa.text.isEmpty().not()) {
+                    send(ClientMessage.MESSAGE.getJSONString(client, inputChatTa.text, currentUser))
+                    inputChatTa.clear()
+                }
+            }
         }
 
         val chatContentVb = VBox().apply {
@@ -312,7 +356,6 @@ class ClientHandler(private val client: ChatClient) {
                 add(allContentDividerHb)
             }
         }
-
         return allContentVb
     }
 
@@ -321,6 +364,50 @@ class ClientHandler(private val client: ChatClient) {
     }
 
     fun getCurrentUserChat(user: String) {
+    }
 
+    fun setCurrentUser(newCurrentUser: String) {
+        currentUser = newCurrentUser
+    }
+
+    fun addMessageToContact(jsonObj: JSONObject) {
+        println("ReceiverName: ${jsonObj.get("receiverName")}")
+        for (contact in contacts) {
+            println("Available Contacts: ${contact.getName()}")
+            if (contact.getName() == jsonObj.get("receiverName").toString()) {
+                contact.addMessage(
+                    jsonObj.get("receiverName").toString(),
+                    getTimeStamp(),
+                    jsonObj.get("message").toString()
+                )
+            }
+        }
+    }
+
+    fun updateGuiMessagesFromContact(username: String) {
+        for (contact in contacts) {
+            if (contact.getName() == username) {
+                var outputText = ""
+                for (message in contact.getMessages()) {
+                    outputText = outputText + (
+                            "${message.getMessage()[0]} - " +
+                            " ${message.getMessage()[1]}\n" +
+                            " ${message.getMessage()[2]}\n\n")
+                }
+                outputChatTa.text = outputText
+            }
+        }
+    }
+
+    fun getTimeStamp(): String {
+        val currentInstant: Instant = Instant.now()
+        val zoneId: ZoneId = ZoneId.of("Europe/Zurich")
+
+        val zonedDateTime = currentInstant.atZone(zoneId)
+        val formatter = DateTimeFormatter.ofPattern("ddMMyyyy HH:mm")
+
+        val formattedDateTime = zonedDateTime.format(formatter)
+
+        return formattedDateTime
     }
 }
