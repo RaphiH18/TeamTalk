@@ -127,7 +127,11 @@ class ClientGUI : Application() {
         Platform.runLater {
             var userChoice: ChoiceDialog<String> = ChoiceDialog()
             while (userChoice.items.isEmpty()){
-                userChoice = ChoiceDialog(chatClient.getServerUsers().first(), chatClient.getServerUsers())
+            val usernameList = mutableListOf<String>()
+            for(user in chatClient.getServerUsers()){
+                usernameList.add(user.getName())
+            }
+                userChoice = ChoiceDialog(usernameList[0], usernameList)
             }
             with(userChoice) {
                 setTitle("Benutzerauswahl")

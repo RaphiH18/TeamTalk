@@ -36,7 +36,6 @@ class ClientHandler(private val client: ChatClient) {
     private lateinit var chatClient: ChatClient
 
     private val handlerScope = CoroutineScope(Dispatchers.IO)
-    private val serverUsers = mutableListOf<String>()
     private var userListStatus = false
     private var status = "Bereit"
 
@@ -47,6 +46,7 @@ class ClientHandler(private val client: ChatClient) {
     val sendChatBtn = Button("Senden")
 
     private val contacts = mutableListOf<Contact>()
+    private var contactList = ListView<String>()
 
     fun connect(server: String, port: Int) {
         var timeoutCounter = 0
@@ -93,27 +93,32 @@ class ClientHandler(private val client: ChatClient) {
                 "HELLO_RESPONSE" -> {
                     val jsonUsers = jsonObj.getJSONArray("userList")
                     for (user in jsonUsers) {
-                        serverUsers.add(user.toString())
+                        // AUSKOMMENTIEREN FUER TEST-ZWECKE
+                        /*if (user != chatClient.getUsername()) {
+                            contacts.add(Contact(user.toString()))
+                        }*/
+                        contacts.add(Contact(user.toString()))
+                        println("Generierte Kontaktliste: $contacts")
                     }
-                    createContacts()
+
 
                     userListStatus = true
                 }
 
                 "MESSAGE_RESPONSE" -> { // Bestätigung für Nachrichtenversand (Falls notwendig)
                     println("MESSAGE_RESPONSE aufgerufen mit $jsonObj")
-                    //val jsonMessage = jsonObj.get("message")
-                    //println("MESSAGE_RESPONSE Erhaltene Nachricht: $jsonMessage")
                     addMessageToContact(jsonObj)
                     updateGuiMessagesFromContact(currentUser)
                 }
 
                 "MESSAGE" -> {
                     println("MESSAGE aufgerufen mit $jsonObj")
-                    //val jsonMessage = jsonObj.get("message")
-                    //println("Erhaltene Message: $jsonMessage")
                     addMessageToContact(jsonObj)
                     updateGuiMessagesFromContact(jsonObj.get("receiverName").toString())
+                }
+                "STATUS_UPDATE" -> {
+                    updateContactStatus(jsonObj)
+                    updateContactView()
                 }
             }
         } else {
@@ -157,17 +162,33 @@ class ClientHandler(private val client: ChatClient) {
         return userListStatus
     }
 
-    fun getServerUsers() = serverUsers
+    fun getServerUsers() = contacts
 
-    fun createContactView(currentUser: String): Node {
-        var contactData = observableArrayList<String>()
-        for (user in getServerUsers()) {
-            contactData.add(user)
-            /*if (user != currentUser) {
-                contactData.add(user)
-            }*/
+    fun updateContactStatus(onlineContacts: JSONObject){
+        val onlineContactsFormatted = onlineContacts.getJSONArray("userList")
+        for(onlineContact in onlineContactsFormatted){
+            for (contact in contacts){
+                if (contact.getName() == onlineContact.toString()) {
+                    contact.setStatus(true)
+                }
+                else {
+                    contact.setStatus(false)
+                }
+            }
         }
-        val contactList = ListView(contactData).apply {
+    }
+
+    fun updateContactView(){
+        val contactData = observableArrayList<String>()
+        for(contact in contacts){
+            if (contact.getStatus()){
+                contactData.add(contact.getName())
+            }
+        }
+        contactList.items = contactData
+    }
+    fun createContactView(currentUser: String): Node {
+        contactList.apply {
             minWidth = 200.0
             maxWidth = 200.0
             prefHeight = 600.0
@@ -180,21 +201,11 @@ class ClientHandler(private val client: ChatClient) {
         return contactList
     }
 
-    fun createContacts() {
-        for (user in getServerUsers()) {
-            /*if (user != chatClient.getUsername()) {
-                contacts.add(Contact(user))
-            }*/
-            contacts.add(Contact(user))
-        }
-        println("Generierte Kontaktliste: $contacts")
-    }
-
     fun createChattingView(currentUser: String): Node {
         var defaultUser: String = ""
         for (user in getServerUsers()) {
-            if (user != currentUser) {
-                defaultUser = user
+            if (user.getName() != currentUser) {
+                defaultUser = user.getName()
                 break
             }
         }
@@ -386,9 +397,9 @@ class ClientHandler(private val client: ChatClient) {
                 var outputText = ""
                 for (message in contact.getMessages()) {
                     outputText = outputText + (
-                            "${message.getMessage()[0]} - " +
-                                    " ${message.getMessage()[1]}\n" +
-                                    " ${message.getMessage()[2]}\n\n")
+                        "${message.getMessage()[0]} - " +
+                        " ${message.getMessage()[1]}\n" +
+                        " ${message.getMessage()[2]}\n\n")
                 }
                 outputChatTa.text = outputText
             }
