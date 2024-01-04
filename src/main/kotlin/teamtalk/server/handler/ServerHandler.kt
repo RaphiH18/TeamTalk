@@ -27,8 +27,6 @@ import java.net.SocketException
 class ServerHandler(private val server: ChatServer) {
 
     private lateinit var serverSocket: ServerSocket
-    private lateinit var output: PrintWriter
-    private lateinit var input: BufferedReader
 
     private val guiScope = CoroutineScope(Dispatchers.JavaFx)
     private val handlerScope = CoroutineScope(Dispatchers.IO)
@@ -44,11 +42,11 @@ class ServerHandler(private val server: ChatServer) {
                     debug("Neue eingehende Verbindung: ${socket.inetAddress.hostAddress}")
 
                     launch {
-                        output = PrintWriter(socket.getOutputStream())
-                        input = BufferedReader(InputStreamReader(socket.getInputStream()))
+                        val output = PrintWriter(socket.getOutputStream())
+                        val input = BufferedReader(InputStreamReader(socket.getInputStream()))
 
                         while (socket.isConnected) {
-                            process(input.readLine(), socket)
+                            process(input.readLine(), socket, output)
                         }
                     }
                 } catch (e: SocketException) {
@@ -59,7 +57,7 @@ class ServerHandler(private val server: ChatServer) {
         }
     }
 
-    private fun process(receivedString: String, socket: Socket) {
+    private fun process(receivedString: String, socket: Socket, output: PrintWriter) {
         debug("<- Von Client erhalten: $receivedString")
 
         if (jsonUtil.isJSON(receivedString)) {
@@ -67,13 +65,15 @@ class ServerHandler(private val server: ChatServer) {
 
             when (jsonObj.get("type")) {
                 "HELLO" -> {
-                    send(ServerMessage.HELLO_RESPONSE.getJSONString("SUCCESS", this))
+                    send(ServerMessage.HELLO_RESPONSE.getJSONString(this, "SUCCESS"), output)
                 }
 
                 "LOGIN" -> {
                     val client = ServerClient(socket, jsonObj.get("username").toString())
                     server.getClients().add(client)
                     log("Verbindung zwischen (${client.getUsername()}) und dem Server erfolgreich aufgebaut.")
+
+                    broadcast(ServerMessage.STATUS_UPDATE.getJSONString(this))
                 }
 
                 "MESSAGE" -> {
@@ -88,13 +88,13 @@ class ServerHandler(private val server: ChatServer) {
                             client.getOutput().println(receivedString)
                             client.getOutput().flush()
 
-                            send(ServerMessage.MESSAGE_RESPONSE.getJSONString("FORWARDED", this, message, receiverName))
+                            send(ServerMessage.MESSAGE_RESPONSE.getJSONString(this, "FORWARDED", message, receiverName), output)
                             break
                         }
                     }
 
                     if (!(receiverFound)) {
-                        send(ServerMessage.MESSAGE_RESPONSE.getJSONString("USER_OFFLINE", this))
+                        send(ServerMessage.MESSAGE_RESPONSE.getJSONString(this, "USER_OFFLINE"), output)
                     }
                 }
 
@@ -111,15 +111,17 @@ class ServerHandler(private val server: ChatServer) {
         }
     }
 
-    private fun send(string: String) {
-        println("Verarbeite Send: ${String}")
-        if (this::output.isInitialized) {
-            output.println(string)
-            output.flush()
-            debug("-> An Client gesendet: $string")
-        } else {
-            throw IllegalStateException("Server nicht gestartet - bitte Server erst starten.")
+    private fun broadcast(string: String) {
+        for (client in server.getClients()) {
+            val output = PrintWriter(client.getOutput())
+            send(string, output)
         }
+    }
+
+    private fun send(string: String, output: PrintWriter) {
+        output.println(string)
+        output.flush()
+        debug("-> An Client gesendet: $string")
     }
 
     fun stop() {

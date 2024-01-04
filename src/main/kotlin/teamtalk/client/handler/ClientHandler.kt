@@ -375,11 +375,7 @@ class ClientHandler(private val client: ChatClient) {
         for (contact in contacts) {
             println("Available Contacts: ${contact.getName()}")
             if (contact.getName() == jsonObj.get("receiverName").toString()) {
-                contact.addMessage(
-                    jsonObj.get("receiverName").toString(),
-                    getTimeStamp(),
-                    jsonObj.get("message").toString()
-                )
+                contact.addMessage(jsonObj.get("receiverName").toString(), getTimeStamp(), jsonObj.get("message").toString())
             }
         }
     }
@@ -391,8 +387,8 @@ class ClientHandler(private val client: ChatClient) {
                 for (message in contact.getMessages()) {
                     outputText = outputText + (
                             "${message.getMessage()[0]} - " +
-                            " ${message.getMessage()[1]}\n" +
-                            " ${message.getMessage()[2]}\n\n")
+                                    " ${message.getMessage()[1]}\n" +
+                                    " ${message.getMessage()[2]}\n\n")
                 }
                 outputChatTa.text = outputText
             }

@@ -47,6 +47,7 @@ class ClientGUI : Application() {
 
         }
     }
+
     private fun startConnectionGUI(stage: Stage) {
         val serverLbl = Label("Server")
         val serverTf = TextField(defaultServerIP)
