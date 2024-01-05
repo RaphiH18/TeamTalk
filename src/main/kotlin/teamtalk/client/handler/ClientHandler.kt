@@ -1,5 +1,6 @@
 package teamtalk.client.handler
 
+import javafx.application.Platform
 import javafx.collections.FXCollections.observableArrayList
 import javafx.geometry.Insets
 import javafx.geometry.Pos
@@ -17,9 +18,12 @@ import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.text.Font
 import kotlinx.coroutines.*
+import kotlinx.coroutines.selects.select
 import org.json.JSONObject
 import teamtalk.client.ClientMessage
 import teamtalk.client.message.Contact
+import teamtalk.client.message.FileMessage
+import teamtalk.client.message.TextMessage
 import teamtalk.jsonUtil
 import teamtalk.server.logger.debug
 import teamtalk.server.logger.log
@@ -47,6 +51,7 @@ class ClientHandler(private val client: ChatClient) {
 
     private val contacts = mutableListOf<Contact>()
     private var contactList = ListView<String>()
+    private var contactListData = observableArrayList<String>()
 
     fun connect(server: String, port: Int) {
         var timeoutCounter = 0
@@ -88,6 +93,8 @@ class ClientHandler(private val client: ChatClient) {
 
         if (jsonUtil.isJSON(receivedString)) {
             val jsonObj = JSONObject(receivedString)
+            println("konvertiertes Object: $jsonObj")
+            println("Gefundender Type: ${jsonObj.get("type")}")
 
             when (jsonObj.get("type")) {
                 "HELLO_RESPONSE" -> {
@@ -100,24 +107,45 @@ class ClientHandler(private val client: ChatClient) {
                         contacts.add(Contact(user.toString()))
                         println("Generierte Kontaktliste: $contacts")
                     }
-
-
                     userListStatus = true
                 }
 
-                "MESSAGE_RESPONSE" -> { // Bestätigung für Nachrichtenversand (Falls notwendig)
-                    println("MESSAGE_RESPONSE aufgerufen mit $jsonObj")
-                    addMessageToContact(jsonObj)
-                    updateGuiMessagesFromContact(currentUser)
+                "MESSAGE_RESPONSE" -> {
+                    val message = jsonObj.getString("message")
+                    val senderName = jsonObj.getString("senderName")
+                    val contact = contacts.find { it.getUsername() == jsonObj.getString("receiverName") }
+                    println("Found Contact: ${contact?.getUsername()}")
+
+                    if (contact != null) {
+                        contact.addMessage(TextMessage(senderName, Instant.now(), message))
+                        println("neue Nachricht\n" + contact.getMessages())
+                        updateGuiMessagesFromContact(contact)
+                    }
                 }
 
                 "MESSAGE" -> {
-                    println("MESSAGE aufgerufen mit $jsonObj")
-                    addMessageToContact(jsonObj)
-                    updateGuiMessagesFromContact(jsonObj.get("receiverName").toString())
+                    val message = jsonObj.getString("message")
+                    val contact = contacts.find { it.getUsername() == jsonObj.getString("senderName") }
+                    println("Found Contact: ${contact?.getUsername()}")
+
+                    if (contact != null) {
+                        contact.addMessage(TextMessage(contact.getUsername(), Instant.now(), message))
+                        println("Aktuelle Nachrichten von Kontakt: ${contact.getUsername()}")
+                        for(item in contact.getMessages()){
+                            println(item.getMessage())
+                        }
+                        println("neue Nachricht\n" + contact.getMessages())
+                        updateGuiMessagesFromContact(contact)
+                    }
                 }
+
                 "STATUS_UPDATE" -> {
+                    println("Update Contact Status")
                     updateContactStatus(jsonObj)
+                    for(contact in contacts){
+                        println("Kontaktname: " + contact.getUsername() + " Status: " + contact.getStatus())
+                    }
+                    println("Update KontaktView")
                     updateContactView()
                 }
             }
@@ -166,13 +194,11 @@ class ClientHandler(private val client: ChatClient) {
 
     fun updateContactStatus(onlineContacts: JSONObject){
         val onlineContactsFormatted = onlineContacts.getJSONArray("userList")
-        for(onlineContact in onlineContactsFormatted){
-            for (contact in contacts){
-                if (contact.getName() == onlineContact.toString()) {
+        for(contact in contacts) {
+            contact.setStatus(false)
+            for (onlineContact in onlineContactsFormatted) {
+                if(contact.getUsername() == onlineContact.toString()){
                     contact.setStatus(true)
-                }
-                else {
-                    contact.setStatus(false)
                 }
             }
         }
@@ -182,20 +208,25 @@ class ClientHandler(private val client: ChatClient) {
         val contactData = observableArrayList<String>()
         for(contact in contacts){
             if (contact.getStatus()){
-                contactData.add(contact.getName())
+                contactData.add(contact.getUsername())
             }
         }
-        contactList.items = contactData
+        Platform.runLater{
+            contactList.items = contactData
+        }
     }
+
     fun createContactView(currentUser: String): Node {
         contactList.apply {
             minWidth = 200.0
             maxWidth = 200.0
             prefHeight = 600.0
             setOnMouseClicked { _ ->
-                var selectedUser = selectionModel.selectedItem
-                setCurrentUserLbl(selectedUser)
-                updateGuiMessagesFromContact(selectedUser)
+                var selectedContact = contacts.find { it.getUsername() == selectionModel.selectedItem }
+                if (selectedContact != null) {
+                    setCurrentUserLbl(selectedContact.getUsername())
+                    updateGuiMessagesFromContact(selectedContact)
+                }
             }
         }
         return contactList
@@ -204,8 +235,8 @@ class ClientHandler(private val client: ChatClient) {
     fun createChattingView(currentUser: String): Node {
         var defaultUser: String = ""
         for (user in getServerUsers()) {
-            if (user.getName() != currentUser) {
-                defaultUser = user.getName()
+            if (user.getUsername() != currentUser) {
+                defaultUser = user.getUsername()
                 break
             }
         }
@@ -381,40 +412,41 @@ class ClientHandler(private val client: ChatClient) {
         currentUser = newCurrentUser
     }
 
-    fun addMessageToContact(jsonObj: JSONObject) {
-        println("ReceiverName: ${jsonObj.get("receiverName")}")
-        for (contact in contacts) {
-            println("Available Contacts: ${contact.getName()}")
-            if (contact.getName() == jsonObj.get("receiverName").toString()) {
-                contact.addMessage(jsonObj.get("receiverName").toString(), getTimeStamp(), jsonObj.get("message").toString())
+//    private fun addMessageToContact(jsonObj: JSONObject) {
+//        println("ReceiverName: ${jsonObj.get("receiverName")}")
+//        for (contact in contacts) {
+//            println("Available Contacts: ${contact.getName()}")
+//            if (contact.getName() == jsonObj.get("receiverName").toString()) {
+//                contact.addMessage(jsonObj.get("receiverName").toString(), getTimeStamp(), jsonObj.get("message").toString())
+//            }
+//        }
+//    }
+
+    fun updateGuiMessagesFromContact(contact: Contact) {
+        var outputText = ""
+        for (message in contact.getMessages()) {
+            println("Current Message: ${message.getMessage()}")
+            if(message is TextMessage) {
+                println("Message is Text Message")
+
             }
+            when(message) {
+                is TextMessage -> outputText += ("${message.getTimestamp()} - ${message.getSenderName()}\n ${message.getMessage()}\n\n")
+                is FileMessage -> return //TODO: File-Anzeige im GUI
+            }
+            outputChatTa.text = outputText
         }
     }
 
-    fun updateGuiMessagesFromContact(username: String) {
-        for (contact in contacts) {
-            if (contact.getName() == username) {
-                var outputText = ""
-                for (message in contact.getMessages()) {
-                    outputText = outputText + (
-                        "${message.getMessage()[0]} - " +
-                        " ${message.getMessage()[1]}\n" +
-                        " ${message.getMessage()[2]}\n\n")
-                }
-                outputChatTa.text = outputText
-            }
-        }
-    }
-
-    fun getTimeStamp(): String {
-        val currentInstant: Instant = Instant.now()
-        val zoneId: ZoneId = ZoneId.of("Europe/Zurich")
-
-        val zonedDateTime = currentInstant.atZone(zoneId)
-        val formatter = DateTimeFormatter.ofPattern("ddMMyyyy HH:mm")
-
-        val formattedDateTime = zonedDateTime.format(formatter)
-
-        return formattedDateTime
-    }
+//    fun getTimeStamp(): String {
+//        val currentInstant: Instant = Instant.now()
+//        val zoneId: ZoneId = ZoneId.of("Europe/Zurich")
+//
+//        val zonedDateTime = currentInstant.atZone(zoneId)
+//        val formatter = DateTimeFormatter.ofPattern("ddMMyyyy HH:mm")
+//
+//        val formattedDateTime = zonedDateTime.format(formatter)
+//
+//        return formattedDateTime
+//    }
 }
