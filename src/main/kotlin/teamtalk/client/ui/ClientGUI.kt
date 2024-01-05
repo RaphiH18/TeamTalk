@@ -44,7 +44,6 @@ class ClientGUI : Application() {
             }
             delay(100)
             startBenutzerauswahlGUI(stage)
-
         }
     }
 
@@ -129,7 +128,7 @@ class ClientGUI : Application() {
             while (userChoice.items.isEmpty()){
             val usernameList = mutableListOf<String>()
             for(user in chatClient.getServerUsers()){
-                usernameList.add(user.getName())
+                usernameList.add(user.getUsername())
             }
                 userChoice = ChoiceDialog(usernameList[0], usernameList)
             }

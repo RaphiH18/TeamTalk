@@ -42,11 +42,11 @@ class ServerHandler(private val server: ChatServer) {
                     debug("Neue eingehende Verbindung: ${socket.inetAddress.hostAddress}")
 
                     launch {
-                        val output = PrintWriter(socket.getOutputStream())
-                        val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+                        val serverClient = ServerClient(socket)
+                        server.getClients().add(serverClient)
 
                         while (socket.isConnected) {
-                            process(input.readLine(), socket, output)
+                            process(serverClient.getInput().readLine(), serverClient)
                         }
                     }
                 } catch (e: SocketException) {
@@ -57,7 +57,7 @@ class ServerHandler(private val server: ChatServer) {
         }
     }
 
-    private fun process(receivedString: String, socket: Socket, output: PrintWriter) {
+    private fun process(receivedString: String, serverClient: ServerClient) {
         debug("<- Von Client erhalten: $receivedString")
 
         if (jsonUtil.isJSON(receivedString)) {
@@ -65,36 +65,27 @@ class ServerHandler(private val server: ChatServer) {
 
             when (jsonObj.get("type")) {
                 "HELLO" -> {
-                    send(ServerMessage.HELLO_RESPONSE.getJSONString(this, "SUCCESS"), output)
+                    send(ServerMessage.HELLO_RESPONSE.getJSONString(this, "SUCCESS"), serverClient)
                 }
 
                 "LOGIN" -> {
-                    val client = ServerClient(socket, jsonObj.get("username").toString())
-                    server.getClients().add(client)
-                    log("Verbindung zwischen (${client.getUsername()}) und dem Server erfolgreich aufgebaut.")
+                    serverClient.setUsername(jsonObj.get("username").toString())
+                    log("Verbindung zwischen (${serverClient.getUsername()}) und dem Server erfolgreich aufgebaut.")
 
                     broadcast(ServerMessage.STATUS_UPDATE.getJSONString(this))
                 }
 
                 "MESSAGE" -> {
-                    val receiverName = jsonObj.get("receiverName").toString()
-                    val message =  jsonObj.get("message").toString()
-                    var receiverFound = false
-                    for (client in server.getClients()) {
-                        if (client.getUsername() == receiverName.toString()) {
-                            println("client.getUsername(): ${client.getUsername()} == receiverName: ${receiverName}")
-                            receiverFound = true
+                    val receiverName = jsonObj.getString("receiverName").toString()
+                    val senderName = jsonObj.getString("senderName")
+                    val message = jsonObj.get("message").toString()
+                    val receiverClient = server.getClients().find { it.getUsername() == receiverName }
 
-                            client.getOutput().println(receivedString)
-                            client.getOutput().flush()
-
-                            send(ServerMessage.MESSAGE_RESPONSE.getJSONString(this, "FORWARDED", message, receiverName), output)
-                            break
-                        }
-                    }
-
-                    if (!(receiverFound)) {
-                        send(ServerMessage.MESSAGE_RESPONSE.getJSONString(this, "USER_OFFLINE"), output)
+                    if (receiverClient != null) {
+                        send(receivedString, receiverClient)
+                        send(ServerMessage.MESSAGE_RESPONSE.getJSONString(this, "FORWARDED", message, receiverName, senderName), serverClient)
+                    } else {
+                        send(ServerMessage.MESSAGE_RESPONSE.getJSONString(this, "USER_OFFLINE"), serverClient)
                     }
                 }
 
@@ -113,14 +104,13 @@ class ServerHandler(private val server: ChatServer) {
 
     private fun broadcast(string: String) {
         for (client in server.getClients()) {
-            val output = PrintWriter(client.getOutput())
-            send(string, output)
+            send(string, client)
         }
     }
 
-    private fun send(string: String, output: PrintWriter) {
-        output.println(string)
-        output.flush()
+    private fun send(string: String, serverClient: ServerClient) {
+        serverClient.getOutput().println(string)
+        serverClient.getOutput().flush()
         debug("-> An Client gesendet: $string")
     }
 

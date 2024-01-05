@@ -6,7 +6,6 @@ import javafx.scene.layout.VBox
 import teamtalk.server.logger
 import java.net.InetAddress
 
-
 class ChatServer(port: Int) {
 
     private val IP = InetAddress.getLoopbackAddress()
@@ -29,7 +28,8 @@ class ChatServer(port: Int) {
 
     fun getClients() = clients
 
-    fun getUsers() = mutableListOf("Raphael Hegi", "Lukas Ledergerber", "Yannick Meier", "Budei Babdei", "Sone Anderi Person")
+    fun getUsers() =
+        mutableListOf("Raphael Hegi", "Lukas Ledergerber", "Yannick Meier", "Budei Babdei", "Sone Anderi Person")
 
     fun getOnlineUsers(): MutableList<String> {
         val onlineUsers = mutableListOf<String>()
@@ -40,7 +40,7 @@ class ChatServer(port: Int) {
         return onlineUsers
     }
 
-    fun createBaseView() : VBox {
+    fun createBaseView(): VBox {
         val vBoxBase = VBox()
         val vBoxContent = createContentView()
         val menuBar = createMenuBar()
@@ -53,7 +53,7 @@ class ChatServer(port: Int) {
         return vBoxBase
     }
 
-    fun createContentView() : VBox {
+    fun createContentView(): VBox {
         val vBoxContent = VBox().apply {
             padding = Insets(10.0)
         }
@@ -67,7 +67,8 @@ class ChatServer(port: Int) {
     }
 
     fun createMenuBar() = bar(
-        menu("Datei",
+        menu(
+            "Datei",
             item("Schliessen", { System.exit(0) })
         )
     )

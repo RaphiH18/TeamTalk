@@ -12,16 +12,18 @@ enum class ClientMessage {
         return JSONObject().apply {
             put("type", type)
 
-            if (type != "HELLO") {
-                put("uuid", client.getUUID())
-                put("username", client.getUsername())
-
-                if (type == "MESSAGE") {
+            when(type) {
+                "LOGIN" -> {
+                    put("uuid", client.getUUID())
+                    put("username", client.getUsername())
+                }
+                "MESSAGE" -> {
+                    put("uuid", client.getUUID())
+                    put("senderName", client.getUsername())
                     put("receiverName", receiverName)
                     put("message", message)
                 }
-
-                if (type == "FILE") {
+                "FILE" -> {
                     /*
                     TODO: Implementation File-Übertragung
                      */

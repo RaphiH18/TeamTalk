@@ -1,17 +1,24 @@
 package teamtalk.client.message
 
-class Contact(
-    private val name: String,
-    private var status: Boolean = false) {
-    private val messages = mutableListOf<TextMessage>()
+class Contact(private val username: String, private var status: Boolean = false) {
 
-    fun addMessage(senderName: String, timeStamp: String, newTextMessage: String){
-        val message = TextMessage(senderName,timeStamp, newTextMessage)
-        println("Füge Message hinzu: $message")
-        messages.add(message)
+    private val messages = mutableListOf<Message>()
+
+    fun addMessage(textMessage: TextMessage) {
+        messages.add(textMessage)
     }
 
-    fun getName() = name
+    fun addMessage(fileMessage: FileMessage) {
+        messages.add(fileMessage)
+    }
+
+//    fun addMessage(senderName: String, timeStamp: String, newTextMessage: String){
+//        val message = TextMessage(senderName,timeStamp, newTextMessage)
+//        println("Füge Message hinzu: $message")
+//        messages.add(message)
+//    }
+
+    fun getUsername() = username
 
     fun setStatus(status: Boolean) {
         this.status = status
@@ -19,7 +26,5 @@ class Contact(
 
     fun getStatus() = status
 
-    fun getMessages(): MutableList<TextMessage> {
-        return messages
-    }
+    fun getMessages() = messages
 }
