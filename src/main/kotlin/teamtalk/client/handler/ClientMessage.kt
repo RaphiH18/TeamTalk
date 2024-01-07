@@ -1,7 +1,6 @@
-package teamtalk.client
+package teamtalk.client.handler
 
 import org.json.JSONObject
-import teamtalk.client.handler.ChatClient
 
 enum class ClientMessage {
     HELLO, LOGIN, MESSAGE, FILE, BYE;

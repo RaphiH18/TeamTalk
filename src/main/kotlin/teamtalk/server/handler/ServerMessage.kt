@@ -1,8 +1,7 @@
-package teamtalk.server
+package teamtalk.server.handler
 
 import org.json.JSONArray
 import org.json.JSONObject
-import teamtalk.server.handler.ServerHandler
 
 enum class ServerMessage {
     HELLO_RESPONSE, LOGIN_RESPONSE, MESSAGE, MESSAGE_RESPONSE, FILE_RESPONSE, STATUS_UPDATE, BYE_RESPONSE;

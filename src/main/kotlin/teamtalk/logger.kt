@@ -1,4 +1,4 @@
-package teamtalk.server
+package teamtalk
 
 import javafx.geometry.Insets
 import javafx.scene.control.Label

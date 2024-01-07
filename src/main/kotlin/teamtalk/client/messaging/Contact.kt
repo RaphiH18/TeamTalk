@@ -1,4 +1,4 @@
-package teamtalk.client.message
+package teamtalk.client.messaging
 
 class Contact(private val username: String, private var status: Boolean = false) {
 

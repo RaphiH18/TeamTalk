@@ -1,4 +1,4 @@
-package teamtalk.client.message
+package teamtalk.client.messaging
 
 import java.io.File
 import java.time.Instant
