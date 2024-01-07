@@ -1,6 +1,6 @@
 package teamtalk.client.messaging
 
-class Contact(private val username: String, private var status: Boolean = false) {
+class Contact(private val username: String, private var online: Boolean = false) {
 
     private val messages = mutableListOf<Message>()
 
@@ -12,19 +12,13 @@ class Contact(private val username: String, private var status: Boolean = false)
         messages.add(fileMessage)
     }
 
-//    fun addMessage(senderName: String, timeStamp: String, newTextMessage: String){
-//        val message = TextMessage(senderName,timeStamp, newTextMessage)
-//        println("Füge Message hinzu: $message")
-//        messages.add(message)
-//    }
+    fun getMessages() = messages
 
     fun getUsername() = username
 
-    fun setStatus(status: Boolean) {
-        this.status = status
+    fun setOnline(online: Boolean) {
+        this.online = online
     }
 
-    fun getStatus() = status
-
-    fun getMessages() = messages
+    fun isOnline() = online
 }

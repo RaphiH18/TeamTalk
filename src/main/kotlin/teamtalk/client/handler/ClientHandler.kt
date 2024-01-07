@@ -15,16 +15,15 @@ import teamtalk.logger.log
 import java.io.IOException
 import java.time.Instant
 
-class ClientHandler(private var client: ChatClient) {
+class ClientHandler(private var chatClient: ChatClient) {
 
     private lateinit var socket: Socket
     private lateinit var output: PrintWriter
     private lateinit var input: BufferedReader
 
     private val handlerScope = CoroutineScope(Dispatchers.IO)
-    private var userListStatus = false
-    private var status = "Bereit"
 
+    private var status = "Bereit"
     private val contacts = mutableListOf<Contact>()
 
     fun connect(server: String, port: Int) {
@@ -32,16 +31,17 @@ class ClientHandler(private var client: ChatClient) {
         val connectionLimit = 10
 
         handlerScope.launch {
-            client = ChatClient()
             do {
                 try {
                     debug("Verbindung zum Server $server mit Port $port herstellen...")
                     status = "Verbinde..."
-                    socket = Socket(server, port)
-                    status = "Verbunden"
 
+                    socket = Socket(server, port)
                     output = PrintWriter(socket.getOutputStream())
                     input = BufferedReader(InputStreamReader(socket.getInputStream()))
+
+                    status = "Verbunden"
+
                     debug("Verbindung erfolgreich hergestellt.")
                 } catch (e: IOException) {
                     debug("Verbindung zum Server fehlgeschlagen... Neuer Versuch...")
@@ -54,7 +54,7 @@ class ClientHandler(private var client: ChatClient) {
                 }
             } while (!(isConnected()) and (timeoutCounter <= connectionLimit))
 
-            send(ClientMessage.HELLO.getJSONString(client))
+            send(ClientMessage.HELLO.getJSONString(chatClient))
 
             while (isConnected()) {
                 process(input.readLine())
@@ -80,7 +80,6 @@ class ClientHandler(private var client: ChatClient) {
                         }*/
                         contacts.add(Contact(user.toString()))
                     }
-                    userListStatus = true
                 }
 
                 "MESSAGE_RESPONSE" -> {
@@ -92,7 +91,7 @@ class ClientHandler(private var client: ChatClient) {
                     if (contact != null) {
                         contact.addMessage(TextMessage(senderName, Instant.now(), message))
                         println("neue Nachricht\n" + contact.getMessages())
-                        client.getGUI().updateGuiMessagesFromContact(contact)
+                        chatClient.getGUI().updateGuiMessagesFromContact(contact)
                     }
                 }
 
@@ -108,18 +107,18 @@ class ClientHandler(private var client: ChatClient) {
                             println(item.getMessage())
                         }
                         println("neue Nachricht\n" + contact.getMessages())
-                        client.getGUI().updateGuiMessagesFromContact(contact)
+                        chatClient.getGUI().updateGuiMessagesFromContact(contact)
                     }
                 }
 
                 "STATUS_UPDATE" -> {
                     println("Update Contact Status")
-                    client.getGUI().updateContactStatus(jsonObj)
+                    chatClient.getGUI().updateContactStatus(jsonObj)
                     for(contact in contacts){
-                        println("Kontaktname: " + contact.getUsername() + " Status: " + contact.getStatus())
+                        println("Kontaktname: " + contact.getUsername() + " Status: " + contact.isOnline())
                     }
                     println("Update KontaktView")
-                    client.getGUI().updateContactView()
+                    chatClient.getGUI().updateContactView()
                 }
             }
         } else {
@@ -129,7 +128,7 @@ class ClientHandler(private var client: ChatClient) {
 
     fun send(string: String) {
         handlerScope.launch {
-            if (isConnectionReady()) {
+            if (isConnected()) {
                 output.println(string)
                 output.flush()
                 debug("-> An Server gesendet: $string")
@@ -143,25 +142,9 @@ class ClientHandler(private var client: ChatClient) {
 
     }
 
-    fun isUserListStatus(): Boolean {
-        while (!getUserListStatus()) {
-            handlerScope.launch {
-                delay(100)
-            }
-        }
-        return getUserListStatus()
-    }
-
-    private fun isConnectionReady() =
-        ((::socket.isInitialized) and (::input.isInitialized) and (::output.isInitialized) and (socket.isConnected))
-
     fun isConnected() = ((::socket.isInitialized && socket.isConnected))
 
     fun getStatusMessage() = status
 
-    private fun getUserListStatus(): Boolean {
-        return userListStatus
-    }
-
-    fun getServerUsers() = contacts
+    fun getContacts() = contacts
 }

@@ -14,11 +14,11 @@ enum class ClientMessage {
             when(type) {
                 "LOGIN" -> {
                     put("uuid", client.getUUID())
-                    put("username", client.getUsername())
+                    put("username", client.username)
                 }
                 "MESSAGE" -> {
                     put("uuid", client.getUUID())
-                    put("senderName", client.getUsername())
+                    put("senderName", client.username)
                     put("receiverName", receiverName)
                     put("message", message)
                 }

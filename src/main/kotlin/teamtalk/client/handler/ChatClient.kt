@@ -9,7 +9,11 @@ class ChatClient {
     private val gui = ClientGUI(this)
 
     private val uuid: UUID = UUID.randomUUID()
-    private var username: String = ""
+    var username: String = ""
+        set(value) {
+            field = value
+            gui.currentUser = value
+        }
 
     fun start(server: String, port: Int) {
         handler.connect(server, port)
@@ -19,18 +23,9 @@ class ChatClient {
 
     fun getGUI() = gui
 
-    fun getStatusMessage() = handler.getStatusMessage()
-
     fun isConnected() = handler.isConnected()
 
-    fun getServerUsers() = handler.getServerUsers()
+    fun getServerUsers() = handler.getContacts()
 
     fun getUUID() = uuid
-
-    fun getUsername() = username
-
-    fun setUsername(newUsername: String) {
-        username = newUsername
-        gui.setCurrentUser(username)
-    }
 }
