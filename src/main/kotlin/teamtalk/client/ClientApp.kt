@@ -18,7 +18,7 @@ class ClientApp : Application() {
             chatClient.getGUI().startConnectionGUI(stage)
             chatClient.getGUI().waitForConnected()
             delay(100)
-            chatClient.getGUI().startBenutzerauswahlGUI(stage)
+            chatClient.getGUI().startUserselectionGUI(stage)
         }
     }
 }

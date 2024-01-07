@@ -13,12 +13,13 @@ import javafx.scene.text.Font
 import javafx.stage.Stage
 import kotlinx.coroutines.delay
 import org.json.JSONObject
-import teamtalk.client.handler.ClientMessage
 import teamtalk.client.handler.ChatClient
+import teamtalk.client.handler.ClientMessage
 import teamtalk.client.messaging.Contact
 import teamtalk.client.messaging.FileMessage
 import teamtalk.client.messaging.TextMessage
 import teamtalk.client.messaging.toFormattedString
+import teamtalk.logger.debug
 import kotlin.system.exitProcess
 
 class ClientGUI(private val chatClient: ChatClient) {
@@ -32,7 +33,7 @@ class ClientGUI(private val chatClient: ChatClient) {
     private var contactList = ListView<String>()
 
     private var currentUserLbl = Label()
-    var currentUser = ""
+    private var currentUser = ""
         set(value) {
             field = value
             currentUserLbl.text = value
@@ -41,7 +42,7 @@ class ClientGUI(private val chatClient: ChatClient) {
     private val outputChatTa = TextArea()
     private val sendChatBtn = Button("Senden")
 
-    fun createBaseView(): VBox {
+    private fun createBaseView(): VBox {
         val vBoxBase = VBox()
         val vBoxContent = createContentView()
         val menuBar = createMenuBar()
@@ -54,12 +55,12 @@ class ClientGUI(private val chatClient: ChatClient) {
         return vBoxBase
     }
 
-    fun createContentView(): SplitPane {
+    private fun createContentView(): SplitPane {
         val splitPane = SplitPane()
 
         with(splitPane) {
             items.addAll(createContactView())
-            items.addAll(createChattingView(chatClient.username))
+            items.addAll(createChattingView())
         }
 
         splitPane.setDividerPositions(0.3)
@@ -156,7 +157,7 @@ class ClientGUI(private val chatClient: ChatClient) {
         }
     }
 
-    fun startBenutzerauswahlGUI(stage: Stage) {
+    fun startUserselectionGUI(stage: Stage) {
         Platform.runLater {
             var userChoice: ChoiceDialog<String> = ChoiceDialog()
             while (userChoice.items.isEmpty()) {
@@ -175,25 +176,24 @@ class ClientGUI(private val chatClient: ChatClient) {
 
             val result = userChoice.showAndWait()
             result.ifPresent { selectedUsername ->
-                chatClient.username = selectedUsername
+                chatClient.setUsername(selectedUsername)
                 chatClient.getHandler().send(ClientMessage.LOGIN.getJSONString(chatClient))
                 startMainGUI(stage)
             }
-
         }
     }
 
     private fun startMainGUI(stage: Stage) {
         with(stage) {
             scene = Scene(createBaseView(), 800.0, 600.0)
-            title = "TeamTalk Client - Angemeldet als: ${chatClient.username}"
+            title = "TeamTalk Client - Angemeldet als: ${chatClient.getUsername()}"
             setOnCloseRequest { exitProcess(0) }
             show()
         }
     }
 
     fun updateContactStatus(onlineContacts: JSONObject) {
-        val onlineContactsFormatted = onlineContacts.getJSONArray("userList")
+        val onlineContactsFormatted = onlineContacts.getJSONArray("onlineUserList")
         for (contact in chatClient.getHandler().getContacts()) {
             contact.setOnline(false)
             for (onlineContact in onlineContactsFormatted) {
@@ -216,7 +216,7 @@ class ClientGUI(private val chatClient: ChatClient) {
         }
     }
 
-    fun createContactView(): Node {
+    private fun createContactView(): Node {
         contactList.apply {
             minWidth = 200.0
             maxWidth = 200.0
@@ -232,8 +232,8 @@ class ClientGUI(private val chatClient: ChatClient) {
         return contactList
     }
 
-    fun createChattingView(currentUser: String): Node {
-        var defaultUser: String = ""
+    private fun createChattingView(): Node {
+        var defaultUser = ""
         for (user in chatClient.getHandler().getContacts()) {
             if (user.getUsername() != currentUser) {
                 defaultUser = user.getUsername()
@@ -273,8 +273,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             prefWidth = 280.0
             setOnAction {
                 if (inputChatTa.text.isEmpty().not()) {
-                    chatClient.getHandler()
-                        .send(ClientMessage.MESSAGE.getJSONString(chatClient, inputChatTa.text, currentUser))
+                    chatClient.getHandler().send(ClientMessage.MESSAGE.getJSONString(chatClient, inputChatTa.text, currentUser))
                     inputChatTa.clear()
                 }
             }
@@ -403,19 +402,15 @@ class ClientGUI(private val chatClient: ChatClient) {
     }
 
     fun updateGuiMessagesFromContact(contact: Contact) {
+        debug("Updatig GUI for Contact: ${contact.getUsername()}")
         var outputText = ""
         for (message in contact.getMessages()) {
-            println("Current Message: ${message.getMessage()}")
-
             when (message) {
-                is TextMessage -> {
-                    println("Message is Text Message")
-                    outputText += ("${message.getTimestamp().toFormattedString()} - ${message.getSenderName()}\n ${message.getMessage()}\n\n")
-                }
+                is TextMessage -> outputText += ("${message.getTimestamp().toFormattedString()} - ${message.getSenderName()}\n ${message.getMessage()}\n\n")
                 is FileMessage -> return //TODO: File-Anzeige im GUI
             }
-            outputChatTa.text = outputText
         }
+        outputChatTa.text = outputText
     }
 
     fun getCurrentUserChat(user: String) {

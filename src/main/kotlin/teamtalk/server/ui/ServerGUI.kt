@@ -8,8 +8,8 @@ import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.shape.Circle
-import teamtalk.server.handler.ChatServer
 import teamtalk.logger
+import teamtalk.server.handler.ChatServer
 
 class ServerGUI(private val chatServer: ChatServer) {
 
@@ -26,7 +26,7 @@ class ServerGUI(private val chatServer: ChatServer) {
         return vBoxBase
     }
 
-    fun createContentView(): VBox {
+    private fun createContentView(): VBox {
         val vBoxContent = VBox().apply {
             padding = Insets(10.0)
         }
@@ -39,7 +39,7 @@ class ServerGUI(private val chatServer: ChatServer) {
         return vBoxContent
     }
 
-    fun createControlView(): Node {
+    private fun createControlView(): Node {
         val controlArea = SplitPane()
 
         with(controlArea) {

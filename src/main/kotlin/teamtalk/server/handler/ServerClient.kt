@@ -18,8 +18,8 @@ class ServerClient(private val socket: Socket, private var username: String = ""
 
     fun getUsername() = username
 
-    fun setUsername(newUsername: String) {
-        this.username = newUsername
+    fun setUsername(username: String) {
+        this.username = username
     }
 
     fun isLoggedIn() = username != ""

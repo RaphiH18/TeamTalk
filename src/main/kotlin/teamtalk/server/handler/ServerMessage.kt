@@ -27,7 +27,7 @@ enum class ServerMessage {
                         onlineNames.put(client.getUsername())
                     }
 
-                    put("userList", onlineNames)
+                    put("onlineUserList", onlineNames)
                 }
 
                 "LOGIN_RESPONSE" -> {

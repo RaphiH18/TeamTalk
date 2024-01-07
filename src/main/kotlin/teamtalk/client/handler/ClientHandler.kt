@@ -1,18 +1,17 @@
 package teamtalk.client.handler
 
-import java.io.BufferedReader
-import java.io.File
-import java.io.InputStreamReader
-import java.io.PrintWriter
-import java.net.Socket
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import teamtalk.client.messaging.Contact
 import teamtalk.client.messaging.TextMessage
 import teamtalk.jsonUtil
 import teamtalk.logger.debug
 import teamtalk.logger.log
-import java.io.IOException
+import java.io.*
+import java.net.Socket
 import java.time.Instant
 
 class ClientHandler(private var chatClient: ChatClient) {
@@ -24,6 +23,12 @@ class ClientHandler(private var chatClient: ChatClient) {
     private val handlerScope = CoroutineScope(Dispatchers.IO)
 
     private var status = "Bereit"
+
+    /*
+    In der "contacts"-Liste des Clients werden beim HELLO-Prozess alle User, die auf dem Server existieren (egal ob on- oder offline) hinzugefügt.
+    Jedes "Contact"-Objekt besitzt einen Online-Status (Boolean), der durch den STATUS_UPDATE-Prozess aktualisiert wird.
+    Das GUI zeigt in der Kontakt-Liste jedoch nur die Kontakte an, die Online sind.
+     */
     private val contacts = mutableListOf<Contact>()
 
     fun connect(server: String, port: Int) {
@@ -67,8 +72,8 @@ class ClientHandler(private var chatClient: ChatClient) {
 
         if (jsonUtil.isJSON(receivedString)) {
             val jsonObj = JSONObject(receivedString)
-            println("konvertiertes Object: $jsonObj")
-            println("Gefundender Type: ${jsonObj.get("type")}")
+//            println("konvertiertes Object: $jsonObj")
+//            println("Gefundender Type: ${jsonObj.get("type")}")
 
             when (jsonObj.get("type")) {
                 "HELLO_RESPONSE" -> {
@@ -86,11 +91,11 @@ class ClientHandler(private var chatClient: ChatClient) {
                     val message = jsonObj.getString("message")
                     val senderName = jsonObj.getString("senderName")
                     val contact = contacts.find { it.getUsername() == jsonObj.getString("receiverName") }
-                    println("Found Contact: ${contact?.getUsername()}")
+//                    println("Found Contact: ${contact?.getUsername()}")
 
                     if (contact != null) {
                         contact.addMessage(TextMessage(senderName, Instant.now(), message))
-                        println("neue Nachricht\n" + contact.getMessages())
+//                        println("neue Nachricht\n" + contact.getMessages())
                         chatClient.getGUI().updateGuiMessagesFromContact(contact)
                     }
                 }
@@ -98,26 +103,26 @@ class ClientHandler(private var chatClient: ChatClient) {
                 "MESSAGE" -> {
                     val message = jsonObj.getString("message")
                     val contact = contacts.find { it.getUsername() == jsonObj.getString("senderName") }
-                    println("Found Contact: ${contact?.getUsername()}")
+//                    println("Found Contact: ${contact?.getUsername()}")
 
                     if (contact != null) {
                         contact.addMessage(TextMessage(contact.getUsername(), Instant.now(), message))
-                        println("Aktuelle Nachrichten von Kontakt: ${contact.getUsername()}")
+//                        println("Aktuelle Nachrichten von Kontakt: ${contact.getUsername()}")
                         for(item in contact.getMessages()){
-                            println(item.getMessage())
+//                            println(item.getMessage())
                         }
-                        println("neue Nachricht\n" + contact.getMessages())
+//                        println("neue Nachricht\n" + contact.getMessages())
                         chatClient.getGUI().updateGuiMessagesFromContact(contact)
                     }
                 }
 
                 "STATUS_UPDATE" -> {
-                    println("Update Contact Status")
+//                    println("Update Contact Status")
                     chatClient.getGUI().updateContactStatus(jsonObj)
                     for(contact in contacts){
-                        println("Kontaktname: " + contact.getUsername() + " Status: " + contact.isOnline())
+//                        println("Kontaktname: " + contact.getUsername() + " Status: " + contact.isOnline())
                     }
-                    println("Update KontaktView")
+//                    println("Update KontaktView")
                     chatClient.getGUI().updateContactView()
                 }
             }
