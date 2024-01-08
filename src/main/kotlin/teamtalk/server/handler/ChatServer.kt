@@ -1,63 +1,42 @@
 package teamtalk.server.handler
 
-import javafx.geometry.Insets
-import javafx.scene.control.*
-import javafx.scene.layout.VBox
-import teamtalk.server.logger
+import teamtalk.server.ui.ServerGUI
 import java.net.InetAddress
-
 
 class ChatServer(port: Int) {
 
+    private val handler = ServerHandler(this)
+    private val gui = ServerGUI(this)
+
     private val IP = InetAddress.getLoopbackAddress()
     private val PORT = port
-    private val clients = mutableListOf<ServerClient>()
-    private val handler: ServerHandler = ServerHandler(this)
 
-    suspend fun start() {
+    private val clients = mutableListOf<ServerClient>()
+
+    fun start() {
         handler.start()
+    }
+
+    fun stop() {
+        handler.stop()
     }
 
     fun getIP() = IP
 
     fun getPort() = PORT
 
+    fun getGUI() = gui
+
     fun getClients() = clients
 
-    fun createBaseView() : VBox {
-        val vBoxBase = VBox()
-        val vBoxContent = createContentView()
-        val menuBar = createMenuBar()
+    fun getUsers() = mutableListOf("Raphael Hegi", "Lukas Ledergerber", "Yannick Meier", "Budei Babdei", "Sone Anderi Person")
 
-        with(vBoxBase) {
-            children.add(menuBar)
-            children.add(vBoxContent)
+    fun getOnlineUsers(): MutableList<String> {
+        val onlineUsers = mutableListOf<String>()
+
+        for (client in clients) {
+            onlineUsers.add(client.getUsername())
         }
-
-        return vBoxBase
+        return onlineUsers
     }
-
-    fun createContentView() : VBox {
-        val vBoxContent = VBox().apply {
-            padding = Insets(10.0)
-        }
-
-        with(vBoxContent) {
-            children.add(handler.createControlView())
-            children.add(logger.createServerView())
-        }
-
-        return vBoxContent
-    }
-
-    fun createMenuBar() = bar(
-        menu("Datei",
-            item("Schliessen", { System.exit(0) })
-        )
-    )
-
-    private fun bar(vararg elements: Menu) = MenuBar().apply { getMenus().addAll(elements) }
-    private fun menu(text: String, vararg elements: MenuItem) = Menu(text).apply { getItems().addAll(elements) }
-    private fun item(text: String, method: () -> Unit) = MenuItem(text).apply { setOnAction { method() } }
-    private fun separator() = SeparatorMenuItem()
 }

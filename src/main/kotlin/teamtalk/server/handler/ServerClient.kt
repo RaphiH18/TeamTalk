@@ -1,17 +1,25 @@
 package teamtalk.server.handler
 
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.PrintWriter
+import java.io.DataInputStream
+import java.io.DataOutputStream
 import java.net.Socket
 
-class ServerClient(private val socket: Socket, private val username: String) {
+class ServerClient(private val socket: Socket, private var username: String = "") {
 
-    private val output = PrintWriter(socket.getOutputStream())
-    private val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+    private val output = DataOutputStream(socket.getOutputStream())
+    private val input = DataInputStream(socket.getInputStream())
 
     fun getSocket() = socket
-    fun getUsername() = username
+
     fun getOutput() = output
+
     fun getInput() = input
+
+    fun getUsername() = username
+
+    fun setUsername(username: String) {
+        this.username = username
+    }
+
+    fun isLoggedIn() = username != ""
 }

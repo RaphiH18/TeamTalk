@@ -1,11 +1,10 @@
-package teamtalk.server
+package teamtalk
 
 import javafx.geometry.Insets
 import javafx.scene.control.Label
 import javafx.scene.control.TextArea
 import javafx.scene.layout.VBox
 import java.text.SimpleDateFormat
-import java.time.LocalDate
 import java.util.*
 
 object logger {

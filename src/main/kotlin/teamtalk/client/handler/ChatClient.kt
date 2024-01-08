@@ -1,64 +1,33 @@
 package teamtalk.client.handler
 
-import javafx.scene.control.*
-import javafx.scene.layout.VBox
-import java.util.UUID
+import teamtalk.client.ui.ClientGUI
+import java.util.*
 
 class ChatClient {
 
-    private val uuid: UUID = UUID.randomUUID()
-    private val username: String = "Max"
-
     private val handler = ClientHandler(this)
+    private val gui = ClientGUI(this)
+
+    private val uuid: UUID = UUID.randomUUID()
+    private var username: String = ""
 
     fun start(server: String, port: Int) {
         handler.connect(server, port)
     }
 
-    fun getStatusMessage() = handler.getStatusMessage()
-    fun getHandler(): ClientHandler = handler
+    fun getHandler() = handler
+
+    fun getGUI() = gui
 
     fun isConnected() = handler.isConnected()
 
-    fun getServerUsers() = handler.getServerUsers()
+    fun getServerUsers() = handler.getContacts()
 
-    fun getUsername(): String = username
+    fun getUsername() = username
 
-    fun getUUID(): UUID = uuid
-
-    fun createBaseView(): VBox {
-        val vBoxBase = VBox()
-        val vBoxContent = createContentView()
-        val menuBar = createMenuBar()
-
-        with(vBoxBase.children) {
-            add(menuBar)
-            add(vBoxContent)
-        }
-
-        return vBoxBase
+    fun setUsername(username: String) {
+        this.username = username
     }
 
-    fun createContentView(): SplitPane {
-        val splitPane = SplitPane()
-
-        with(splitPane) {
-            items.addAll(handler.createContactView())
-            items.addAll(handler.createChattingView())
-        }
-
-        splitPane.setDividerPositions(0.3)
-        return splitPane
-    }
-
-    fun createMenuBar() = bar(
-        menu("Datei",
-            item( "Schliessen", { System.exit(0) })
-            )
-        )
-
-    private fun bar(vararg elements: Menu) = MenuBar().apply { getMenus().addAll(elements) }
-    private fun menu(text: String, vararg elements: MenuItem) = Menu(text).apply { getItems().addAll(elements) }
-    private fun item(text: String, method: () -> Unit) = MenuItem(text).apply { setOnAction { method() } }
-    private fun separator() = SeparatorMenuItem()
+    fun getUUID() = uuid
 }
