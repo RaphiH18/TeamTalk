@@ -6,11 +6,12 @@ import org.json.JSONObject
 enum class ServerMessage {
     HELLO_RESPONSE, LOGIN_RESPONSE, MESSAGE, MESSAGE_RESPONSE, FILE_RESPONSE, STATUS_UPDATE, BYE_RESPONSE;
 
-    fun getJSONString(serverHandler: ServerHandler, status: String = "", data: String = "", receiverName: String = "", senderName: String = ""): String {
+    fun toJSON(serverHandler: ServerHandler, status: String = "", receiverName: String = "", senderName: String = "", payloadSize: Int = 0): JSONObject {
         val type = this@ServerMessage.toString()
 
         return JSONObject().apply {
             put("type", type)
+            put("payloadSize", payloadSize)
 
             if (type.contains("RESPONSE")) {
                 put("status", status)
@@ -21,6 +22,15 @@ enum class ServerMessage {
                     put("userList", JSONArray(serverHandler.getServer().getUsers()))
                 }
 
+                "LOGIN_RESPONSE" -> {
+                    put("onlineUserList", JSONArray(serverHandler.getServer().getOnlineUsers()))
+                }
+
+                "MESSAGE_RESPONSE" -> {
+                    put("senderName", senderName)
+                    put("receiverName", receiverName)
+                }
+
                 "STATUS_UPDATE" -> {
                     val onlineNames = JSONArray()
                     for (client in serverHandler.getServer().getClients()) {
@@ -29,17 +39,7 @@ enum class ServerMessage {
 
                     put("onlineUserList", onlineNames)
                 }
-
-                "LOGIN_RESPONSE" -> {
-                    put("onlineUserList", JSONArray(serverHandler.getServer().getOnlineUsers()))
-                }
-
-                "MESSAGE_RESPONSE" -> {
-                    put("senderName", senderName)
-                    put("receiverName", receiverName)
-                    put("message", data)
-                }
             }
-        }.toString()
+        }
     }
 }

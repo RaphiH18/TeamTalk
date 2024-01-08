@@ -10,15 +10,17 @@ import teamtalk.client.messaging.TextMessage
 import teamtalk.jsonUtil
 import teamtalk.logger.debug
 import teamtalk.logger.log
-import java.io.*
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.io.IOException
 import java.net.Socket
 import java.time.Instant
 
 class ClientHandler(private var chatClient: ChatClient) {
 
     private lateinit var socket: Socket
-    private lateinit var output: PrintWriter
-    private lateinit var input: BufferedReader
+    private lateinit var output: DataOutputStream
+    private lateinit var input: DataInputStream
 
     private val handlerScope = CoroutineScope(Dispatchers.IO)
 
@@ -42,8 +44,8 @@ class ClientHandler(private var chatClient: ChatClient) {
                     status = "Verbinde..."
 
                     socket = Socket(server, port)
-                    output = PrintWriter(socket.getOutputStream())
-                    input = BufferedReader(InputStreamReader(socket.getInputStream()))
+                    output = DataOutputStream(socket.getOutputStream())
+                    input = DataInputStream(socket.getInputStream())
 
                     status = "Verbunden"
 
@@ -59,70 +61,63 @@ class ClientHandler(private var chatClient: ChatClient) {
                 }
             } while (!(isConnected()) and (timeoutCounter <= connectionLimit))
 
-            send(ClientMessage.HELLO.getJSONString(chatClient))
+            send(ClientMessage.HELLO.toJSON(chatClient))
 
             while (isConnected()) {
-                process(input.readLine())
+                process()
             }
         }
     }
 
-    private fun process(receivedString: String) {
-        debug("<- Von Server erhalten: $receivedString")
+    private fun process() {
+        val headerSize = input.readInt()
+        val headerBytes = ByteArray(headerSize)
+        input.readFully(headerBytes)
+        val headerString = String(headerBytes, Charsets.UTF_8)
 
-        if (jsonUtil.isJSON(receivedString)) {
-            val jsonObj = JSONObject(receivedString)
-//            println("konvertiertes Object: $jsonObj")
-//            println("Gefundender Type: ${jsonObj.get("type")}")
+        debug("<- Von Server erhalten (Header): $headerString")
 
-            when (jsonObj.get("type")) {
+        if (jsonUtil.isJSON(headerString)) {
+            val headerJSON = JSONObject(String(headerBytes, Charsets.UTF_8))
+            val payloadSize = headerJSON.getInt("payloadSize")
+
+            when (headerJSON.get("type")) {
                 "HELLO_RESPONSE" -> {
-                    val jsonUsers = jsonObj.getJSONArray("userList")
-                    for (user in jsonUsers) {
-                        // AUSKOMMENTIEREN FUER TEST-ZWECKE
-                        /*if (user != chatClient.getUsername()) {
-                            contacts.add(Contact(user.toString()))
-                        }*/
+                    val userList = headerJSON.getJSONArray("userList")
+                    for (user in userList) {
+//                        if (user != chatClient.getUsername()) {
+//                            contacts.add(Contact(user.toString()))
+//                        }
                         contacts.add(Contact(user.toString()))
                     }
                 }
 
                 "MESSAGE_RESPONSE" -> {
-                    val message = jsonObj.getString("message")
-                    val senderName = jsonObj.getString("senderName")
-                    val contact = contacts.find { it.getUsername() == jsonObj.getString("receiverName") }
-//                    println("Found Contact: ${contact?.getUsername()}")
+                    val messageBytes = ByteArray(payloadSize)
+                    input.readFully(messageBytes)
+                    val message = String(messageBytes, Charsets.UTF_8)
+                    val contact = contacts.find { it.getUsername() == headerJSON.getString("receiverName") }
 
                     if (contact != null) {
-                        contact.addMessage(TextMessage(senderName, Instant.now(), message))
-//                        println("neue Nachricht\n" + contact.getMessages())
+                        contact.addMessage(TextMessage(chatClient.getUsername(), Instant.now(), message))
                         chatClient.getGUI().updateGuiMessagesFromContact(contact)
                     }
                 }
 
                 "MESSAGE" -> {
-                    val message = jsonObj.getString("message")
-                    val contact = contacts.find { it.getUsername() == jsonObj.getString("senderName") }
-//                    println("Found Contact: ${contact?.getUsername()}")
+                    val messageBytes = ByteArray(payloadSize)
+                    input.readFully(messageBytes)
+                    val message = String(messageBytes, Charsets.UTF_8)
+                    val contact = contacts.find { it.getUsername() == headerJSON.getString("senderName") }
 
                     if (contact != null) {
                         contact.addMessage(TextMessage(contact.getUsername(), Instant.now(), message))
-//                        println("Aktuelle Nachrichten von Kontakt: ${contact.getUsername()}")
-                        for(item in contact.getMessages()){
-//                            println(item.getMessage())
-                        }
-//                        println("neue Nachricht\n" + contact.getMessages())
                         chatClient.getGUI().updateGuiMessagesFromContact(contact)
                     }
                 }
 
                 "STATUS_UPDATE" -> {
-//                    println("Update Contact Status")
-                    chatClient.getGUI().updateContactStatus(jsonObj)
-                    for(contact in contacts){
-//                        println("Kontaktname: " + contact.getUsername() + " Status: " + contact.isOnline())
-                    }
-//                    println("Update KontaktView")
+                    chatClient.getGUI().updateContactStatus(headerJSON)
                     chatClient.getGUI().updateContactView()
                 }
             }
@@ -131,20 +126,22 @@ class ClientHandler(private var chatClient: ChatClient) {
         }
     }
 
-    fun send(string: String) {
+    fun send(header: JSONObject, payloadBytes: ByteArray = byteArrayOf()) {
         handlerScope.launch {
             if (isConnected()) {
-                output.println(string)
-                output.flush()
-                debug("-> An Server gesendet: $string")
+                val headerBytes = header.toString().toByteArray(Charsets.UTF_8)
+                output.writeInt(headerBytes.size)
+                output.write(headerBytes)
+
+                if (payloadBytes.isNotEmpty()) {
+                    output.write(payloadBytes)
+                }
+
+                debug("-> An Server gesendet (Header): $header")
             } else {
                 throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
             }
         }
-    }
-
-    fun send(file: File) {
-
     }
 
     fun isConnected() = ((::socket.isInitialized && socket.isConnected))

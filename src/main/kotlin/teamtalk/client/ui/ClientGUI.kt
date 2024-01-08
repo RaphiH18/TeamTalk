@@ -177,7 +177,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             val result = userChoice.showAndWait()
             result.ifPresent { selectedUsername ->
                 chatClient.setUsername(selectedUsername)
-                chatClient.getHandler().send(ClientMessage.LOGIN.getJSONString(chatClient))
+                chatClient.getHandler().send(ClientMessage.LOGIN.toJSON(chatClient))
                 startMainGUI(stage)
             }
         }
@@ -273,7 +273,12 @@ class ClientGUI(private val chatClient: ChatClient) {
             prefWidth = 280.0
             setOnAction {
                 if (inputChatTa.text.isEmpty().not()) {
-                    chatClient.getHandler().send(ClientMessage.MESSAGE.getJSONString(chatClient, inputChatTa.text, currentUser))
+                    val payloadBytes = inputChatTa.text.toByteArray(Charsets.UTF_8)
+
+                    chatClient.getHandler().send(
+                        ClientMessage.MESSAGE.toJSON(chatClient, currentUser, payloadBytes.size),
+                        payloadBytes)
+
                     inputChatTa.clear()
                 }
             }

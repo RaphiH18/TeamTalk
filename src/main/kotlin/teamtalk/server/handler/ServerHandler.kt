@@ -14,7 +14,7 @@ class ServerHandler(private val server: ChatServer) {
 
     private lateinit var serverSocket: ServerSocket
 
-    private val handlerScope = CoroutineScope(Dispatchers.IO)
+    val handlerScope = CoroutineScope(Dispatchers.IO)
 
     fun start() {
         handlerScope.launch {
@@ -31,7 +31,7 @@ class ServerHandler(private val server: ChatServer) {
                         server.getClients().add(serverClient)
 
                         while (socket.isConnected) {
-                            process(serverClient.getInput().readLine(), serverClient)
+                            process(serverClient)
                         }
                     }
                 } catch (e: SocketException) {
@@ -42,35 +42,60 @@ class ServerHandler(private val server: ChatServer) {
         }
     }
 
-    private fun process(receivedString: String, serverClient: ServerClient) {
-        debug("<- Von Client erhalten: $receivedString")
+    private fun process(serverClient: ServerClient) {
+        val headerSize = serverClient.getInput().readInt()
+        val headerBytes = ByteArray(headerSize)
+        serverClient.getInput().readFully(headerBytes)
+        val headerString = String(headerBytes, Charsets.UTF_8)
 
-        if (jsonUtil.isJSON(receivedString)) {
-            val jsonObj = JSONObject(receivedString)
+        debug("<- Von Client erhalten: $headerString")
 
-            when (jsonObj.get("type")) {
+        if (jsonUtil.isJSON(headerString)) {
+            val headerJSON = JSONObject(String(headerBytes, Charsets.UTF_8))
+            val payloadSize = headerJSON.getInt("payloadSize")
+
+            when (headerJSON.get("type")) {
                 "HELLO" -> {
-                    send(ServerMessage.HELLO_RESPONSE.getJSONString(this, "SUCCESS"), serverClient)
+                    send(serverClient, ServerMessage.HELLO_RESPONSE.toJSON(this, "SUCCESS"))
                 }
 
                 "LOGIN" -> {
-                    serverClient.setUsername(jsonObj.get("username").toString())
+                    serverClient.setUsername(headerJSON.get("username").toString())
                     log("Verbindung zwischen (${serverClient.getUsername()}) und dem Server erfolgreich aufgebaut.")
 
-                    broadcast(ServerMessage.STATUS_UPDATE.getJSONString(this))
+                    broadcast(ServerMessage.STATUS_UPDATE.toJSON(this))
                 }
 
                 "MESSAGE" -> {
-                    val receiverName = jsonObj.getString("receiverName").toString()
-                    val senderName = jsonObj.getString("senderName")
-                    val message = jsonObj.get("message").toString()
-                    val receiverClient = server.getClients().find { it.getUsername() == receiverName }
+                    val messageBytes = ByteArray(payloadSize)
+                    serverClient.getInput().readFully(messageBytes)
+
+                    val receiverClient = server.getClients().find { it.getUsername() == headerJSON.getString("receiverName") }
 
                     if (receiverClient != null) {
-                        send(ServerMessage.MESSAGE_RESPONSE.getJSONString(this, "FORWARDED", message, receiverName, senderName), serverClient)
-                        send(receivedString, receiverClient)
+                        send(receiverClient, headerJSON, messageBytes)
+                        send(
+                            serverClient,
+                            ServerMessage.MESSAGE_RESPONSE.toJSON(
+                                this,
+                                "FORWARDED",
+                                receiverClient.getUsername(),
+                                serverClient.getUsername(),
+                                messageBytes.size
+                            ),
+                            messageBytes
+                        )
                     } else {
-                        send(ServerMessage.MESSAGE_RESPONSE.getJSONString(this, "USER_OFFLINE"), serverClient)
+                        send(
+                            serverClient,
+                            ServerMessage.MESSAGE_RESPONSE.toJSON(
+                                this,
+                                "USER_OFFLINE",
+                                headerJSON.getString("receiverName"),
+                                serverClient.getUsername(),
+                                messageBytes.size
+                            )
+                        )
                     }
                 }
 
@@ -87,16 +112,24 @@ class ServerHandler(private val server: ChatServer) {
         }
     }
 
-    private fun broadcast(string: String) {
-        for (client in server.getClients()) {
-            send(string, client)
+    private fun send(serverClient: ServerClient, header: JSONObject, payloadBytes: ByteArray = byteArrayOf()) {
+        handlerScope.launch {
+            val headerBytes = header.toString().toByteArray(Charsets.UTF_8)
+            serverClient.getOutput().writeInt(headerBytes.size)
+            serverClient.getOutput().write(headerBytes)
+
+            if (payloadBytes.isNotEmpty()) {
+                serverClient.getOutput().write(payloadBytes)
+            }
+
+            debug("-> An Client gesendet (Header): $header")
         }
     }
 
-    private fun send(string: String, serverClient: ServerClient) {
-        serverClient.getOutput().println(string)
-        serverClient.getOutput().flush()
-        debug("-> An Client gesendet: $string")
+    private fun broadcast(header: JSONObject, payloadBytes: ByteArray = byteArrayOf()) {
+        for (serverClient in server.getClients()) {
+            send(serverClient, header, payloadBytes)
+        }
     }
 
     fun stop() {

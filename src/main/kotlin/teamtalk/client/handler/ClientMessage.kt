@@ -5,29 +5,22 @@ import org.json.JSONObject
 enum class ClientMessage {
     HELLO, LOGIN, MESSAGE, FILE, BYE;
 
-    fun getJSONString(client: ChatClient, message: String = "", receiverName: String = ""): String {
+    fun toJSON(chatClient: ChatClient, receiverName: String = "", payloadSize: Int = 0): JSONObject {
         val type = this@ClientMessage.toString()
 
         return JSONObject().apply {
             put("type", type)
+            put("payloadSize", payloadSize)
 
-            when(type) {
-                "LOGIN" -> {
-                    put("uuid", client.getUUID())
-                    put("username", client.getUsername())
-                }
-                "MESSAGE" -> {
-                    put("uuid", client.getUUID())
-                    put("senderName", client.getUsername())
+            when (type) {
+                "MESSAGE", "FILE" -> {
+                    put("senderName", chatClient.getUsername())
                     put("receiverName", receiverName)
-                    put("message", message)
                 }
-                "FILE" -> {
-                    /*
-                    TODO: Implementation File-Übertragung
-                     */
+                "LOGIN" -> {
+                    put("username", chatClient.getUsername())
                 }
             }
-        }.toString()
+        }
     }
 }
