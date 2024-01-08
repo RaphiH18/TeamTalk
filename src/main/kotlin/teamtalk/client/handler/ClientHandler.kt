@@ -120,7 +120,7 @@ class ClientHandler(private var chatClient: ChatClient) {
 //                    println("Update Contact Status")
                     chatClient.getGUI().updateContactStatus(jsonObj)
                     for(contact in contacts){
-//                        println("Kontaktname: " + contact.getUsername() + " Status: " + contact.isOnline())
+                        println("Kontaktname: " + contact.getUsername() + " Status: " + contact.isOnline())
                     }
 //                    println("Update KontaktView")
                     chatClient.getGUI().updateContactView()
@@ -152,4 +152,25 @@ class ClientHandler(private var chatClient: ChatClient) {
     fun getStatusMessage() = status
 
     fun getContacts() = contacts
+
+    fun getContacts(status: String): MutableList<Contact> {
+        val contactList = mutableListOf<Contact>()
+        when (status){
+            "offline" -> {
+                for (contact in getContacts()){
+                    if (contact.isOnline().not()){
+                       contactList.add(contact)
+                    }
+                }
+            }
+            "online" ->{
+                for (contact in getContacts()) {
+                    if (contact.isOnline()) {
+                        contactList.add(contact)
+                    }
+                }
+            }
+        }
+        return contactList
+    }
 }

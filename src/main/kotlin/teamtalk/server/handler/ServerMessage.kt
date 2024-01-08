@@ -18,6 +18,7 @@ enum class ServerMessage {
 
             when(type) {
                 "HELLO_RESPONSE"-> {
+                    //put("userList", JSONArray(serverHandler.getServer().getOfflineUsers()))
                     put("userList", JSONArray(serverHandler.getServer().getUsers()))
                 }
 

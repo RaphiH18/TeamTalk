@@ -23,6 +23,8 @@ class ChatClient {
 
     fun getServerUsers() = handler.getContacts()
 
+    fun getServerUsers(status: String) = handler.getContacts(status)
+
     fun getUsername() = username
 
     fun setUsername(username: String) {

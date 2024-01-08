@@ -7,12 +7,15 @@ import javafx.scene.control.*
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
+import javafx.scene.paint.Color
 import javafx.scene.shape.Circle
 import teamtalk.logger
 import teamtalk.server.handler.ChatServer
 
 class ServerGUI(private val chatServer: ChatServer) {
-
+    private val statusCIR = Circle(4.0)
+    private val startBTN = Button("Start")
+    private val stopBTN = Button("Stop")
     fun createBaseView(): VBox {
         val vBoxBase = VBox()
         val vBoxContent = createContentView()
@@ -62,19 +65,27 @@ class ServerGUI(private val chatServer: ChatServer) {
             val dashboard = VBox()
 
             dashboard.children.add(HBox().apply {
-                children.add(Circle(4.0))
+                children.add(statusCIR)
                 children.add(Label("Server"))
                 children.add(Label("Port: 4444"))
-                children.add(Button("Start").also {
+                children.add(startBTN.also {
                     it.setOnAction {
                         chatServer.start()
+                        startBTN.isDisable = true
+                        stopBTN.isDisable = false
+                        statusCIR.fill = Color.GREEN
                     }
                 })
-                children.add(Button("Stop").also {
+                children.add(stopBTN.also {
+                    it.isDisable = true
                     it.setOnAction {
                         chatServer.stop()
+                        startBTN.isDisable = false
+                        stopBTN.isDisable = true
+                        statusCIR.fill = Color.BLACK
                     }
                 })
+
                 padding = Insets(10.0)
                 spacing = 10.0
                 alignment = Pos.CENTER_LEFT

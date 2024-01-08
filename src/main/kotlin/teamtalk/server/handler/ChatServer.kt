@@ -39,4 +39,16 @@ class ChatServer(port: Int) {
         }
         return onlineUsers
     }
+
+    fun getOfflineUsers(): MutableList<String> {
+        val offlineUsers = mutableListOf<String>()
+
+        for(user in getUsers()){
+            if (getOnlineUsers().contains(user).not()) {
+                offlineUsers.add(user)
+            }
+        }
+        println("Aktuelle Offlineusers: $offlineUsers")
+        return offlineUsers
+    }
 }

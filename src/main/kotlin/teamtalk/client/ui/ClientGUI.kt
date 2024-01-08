@@ -12,6 +12,8 @@ import javafx.scene.layout.VBox
 import javafx.scene.text.Font
 import javafx.stage.Stage
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import teamtalk.client.handler.ChatClient
 import teamtalk.client.handler.ClientMessage
@@ -31,8 +33,8 @@ class ClientGUI(private val chatClient: ChatClient) {
     private val messageOutputLbl = Label("Bereit")
 
     private var contactList = ListView<String>()
-
     private var currentUserLbl = Label()
+
     private var currentUser = ""
         set(value) {
             field = value
@@ -162,7 +164,8 @@ class ClientGUI(private val chatClient: ChatClient) {
             var userChoice: ChoiceDialog<String> = ChoiceDialog()
             while (userChoice.items.isEmpty()) {
                 val usernameList = mutableListOf<String>()
-                for (user in chatClient.getServerUsers()) {
+                for (user in chatClient.getServerUsers("offline")) {
+                    println("Benutzer: ${user.getUsername()}")
                     usernameList.add(user.getUsername())
                 }
                 userChoice = ChoiceDialog(usernameList[0], usernameList)
@@ -194,10 +197,15 @@ class ClientGUI(private val chatClient: ChatClient) {
 
     fun updateContactStatus(onlineContacts: JSONObject) {
         val onlineContactsFormatted = onlineContacts.getJSONArray("onlineUserList")
-        for (contact in chatClient.getHandler().getContacts()) {
+        println("onlienUserList: $onlineContactsFormatted")
+        for (contact in chatClient.getHandler().getContacts()){
             contact.setOnline(false)
+        }
+        for (contact in chatClient.getHandler().getContacts()) {
             for (onlineContact in onlineContactsFormatted) {
+                println("Onlinekontakt: ${onlineContact} - kontakt: ${contact.getUsername()} ")
                 if (contact.getUsername() == onlineContact.toString()) {
+                    println("Setze Kontakt online: ${contact.getUsername()}")
                     contact.setOnline(true)
                 }
             }
@@ -207,11 +215,13 @@ class ClientGUI(private val chatClient: ChatClient) {
     fun updateContactView() {
         val contactData = FXCollections.observableArrayList<String>()
         for (contact in chatClient.getHandler().getContacts()) {
+            println("INFOS: ${contact.getUsername()}, ${contact.isOnline()}")
             if (contact.isOnline()) {
                 contactData.add(contact.getUsername())
             }
         }
         Platform.runLater {
+            println("Current CONTACTDATA: $contactData")
             contactList.items = contactData
         }
     }
