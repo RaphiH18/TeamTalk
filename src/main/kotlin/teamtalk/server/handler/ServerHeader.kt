@@ -3,11 +3,12 @@ package teamtalk.server.handler
 import org.json.JSONArray
 import org.json.JSONObject
 
-enum class ServerMessage {
-    HELLO_RESPONSE, LOGIN_RESPONSE, MESSAGE, MESSAGE_RESPONSE, FILE_RESPONSE, STATUS_UPDATE, BYE_RESPONSE;
+enum class ServerHeader {
+
+    HELLO_RESPONSE, LOGIN_RESPONSE, MESSAGE_RESPONSE, FILE_RESPONSE, STATUS_UPDATE;
 
     fun toJSON(serverHandler: ServerHandler, status: String = "", receiverName: String = "", senderName: String = "", payloadSize: Int = 0): JSONObject {
-        val type = this@ServerMessage.toString()
+        val type = this@ServerHeader.toString()
 
         return JSONObject().apply {
             put("type", type)

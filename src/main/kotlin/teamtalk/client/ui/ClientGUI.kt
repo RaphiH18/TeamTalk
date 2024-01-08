@@ -14,7 +14,7 @@ import javafx.stage.Stage
 import kotlinx.coroutines.delay
 import org.json.JSONObject
 import teamtalk.client.handler.ChatClient
-import teamtalk.client.handler.ClientMessage
+import teamtalk.client.handler.ClientHeader
 import teamtalk.client.messaging.Contact
 import teamtalk.client.messaging.FileMessage
 import teamtalk.client.messaging.TextMessage
@@ -177,7 +177,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             val result = userChoice.showAndWait()
             result.ifPresent { selectedUsername ->
                 chatClient.setUsername(selectedUsername)
-                chatClient.getHandler().send(ClientMessage.LOGIN.toJSON(chatClient))
+                chatClient.getHandler().send(ClientHeader.LOGIN.toJSON(chatClient))
                 startMainGUI(stage)
             }
         }
@@ -273,11 +273,11 @@ class ClientGUI(private val chatClient: ChatClient) {
             prefWidth = 280.0
             setOnAction {
                 if (inputChatTa.text.isEmpty().not()) {
-                    val payloadBytes = inputChatTa.text.toByteArray(Charsets.UTF_8)
+                    val messageBytes = inputChatTa.text.toByteArray(Charsets.UTF_8)
 
                     chatClient.getHandler().send(
-                        ClientMessage.MESSAGE.toJSON(chatClient, currentUser, payloadBytes.size),
-                        payloadBytes)
+                        ClientHeader.MESSAGE.toJSON(chatClient, currentUser, messageBytes.size),
+                        messageBytes)
 
                     inputChatTa.clear()
                 }
