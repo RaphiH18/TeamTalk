@@ -4,13 +4,16 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-abstract class Message(private val senderName: String, private val timestamp: Instant) {
+abstract class Message(private val senderName: String, private val receiverName: String, private val timestamp: Instant) {
 
     abstract fun getMessage(): Any
 
     fun getTimestamp() = timestamp
 
     fun getSenderName() = senderName
+
+    fun getReceiverName() = receiverName
+
 }
 
 fun Instant.toFormattedString(): String {

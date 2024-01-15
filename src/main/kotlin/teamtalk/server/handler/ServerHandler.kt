@@ -4,17 +4,19 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import teamtalk.client.messaging.TextMessage
 import teamtalk.jsonUtil
 import teamtalk.logger.debug
 import teamtalk.logger.log
 import java.net.ServerSocket
 import java.net.SocketException
+import java.time.Instant
 
 class ServerHandler(private val server: ChatServer) {
 
     private lateinit var serverSocket: ServerSocket
 
-    val handlerScope = CoroutineScope(Dispatchers.IO)
+    private val handlerScope = CoroutineScope(Dispatchers.IO)
 
     fun start() {
         handlerScope.launch {
@@ -48,47 +50,48 @@ class ServerHandler(private val server: ChatServer) {
         serverClient.getInput().readFully(headerBytes)
         val headerString = String(headerBytes, Charsets.UTF_8)
 
-        debug("<- Von Client erhalten: $headerString")
+        debug("<- Von Client erhalten (Header): $headerString")
 
         if (jsonUtil.isJSON(headerString)) {
-            val headerJSON = JSONObject(String(headerBytes, Charsets.UTF_8))
+            val headerJSON = JSONObject(headerString)
             val payloadSize = headerJSON.getInt("payloadSize")
 
             when (headerJSON.get("type")) {
                 "HELLO" -> {
-                    send(serverClient, ServerMessage.HELLO_RESPONSE.toJSON(this, "SUCCESS"))
+                    serverClient.send(ServerHeader.HELLO_RESPONSE.toJSON(this, "SUCCESS"))
                 }
 
                 "LOGIN" -> {
                     serverClient.setUsername(headerJSON.get("username").toString())
+                    serverClient.setLoginTime(Instant.now())
                     log("Verbindung zwischen (${serverClient.getUsername()}) und dem Server erfolgreich aufgebaut.")
 
-                    broadcast(ServerMessage.STATUS_UPDATE.toJSON(this))
+                    broadcast(ServerHeader.STATUS_UPDATE.toJSON(this))
                 }
 
                 "MESSAGE" -> {
                     val messageBytes = ByteArray(payloadSize)
                     serverClient.getInput().readFully(messageBytes)
+                    val messageText = String(messageBytes, Charsets.UTF_8)
 
                     val receiverClient = server.getClients().find { it.getUsername() == headerJSON.getString("receiverName") }
 
                     if (receiverClient != null) {
-                        send(receiverClient, headerJSON, messageBytes)
-                        send(
-                            serverClient,
-                            ServerMessage.MESSAGE_RESPONSE.toJSON(
-                                this,
-                                "FORWARDED",
-                                receiverClient.getUsername(),
-                                serverClient.getUsername(),
+                        receiverClient.send(headerJSON, messageBytes)
+
+                        serverClient.send(
+                            ServerHeader.MESSAGE_RESPONSE.toJSON(
+                                this, "FORWARDED", receiverClient.getUsername(), serverClient.getUsername(),
                                 messageBytes.size
                             ),
                             messageBytes
                         )
+
+                        val message = TextMessage(serverClient.getUsername(), receiverClient.getUsername(), Instant.now(), messageText)
+                        server.getStats().messages.add(message)
                     } else {
-                        send(
-                            serverClient,
-                            ServerMessage.MESSAGE_RESPONSE.toJSON(
+                        serverClient.send(
+                            ServerHeader.MESSAGE_RESPONSE.toJSON(
                                 this,
                                 "USER_OFFLINE",
                                 headerJSON.getString("receiverName"),
@@ -112,23 +115,9 @@ class ServerHandler(private val server: ChatServer) {
         }
     }
 
-    private fun send(serverClient: ServerClient, header: JSONObject, payloadBytes: ByteArray = byteArrayOf()) {
-        handlerScope.launch {
-            val headerBytes = header.toString().toByteArray(Charsets.UTF_8)
-            serverClient.getOutput().writeInt(headerBytes.size)
-            serverClient.getOutput().write(headerBytes)
-
-            if (payloadBytes.isNotEmpty()) {
-                serverClient.getOutput().write(payloadBytes)
-            }
-
-            debug("-> An Client gesendet (Header): $header")
-        }
-    }
-
     private fun broadcast(header: JSONObject, payloadBytes: ByteArray = byteArrayOf()) {
         for (serverClient in server.getClients()) {
-            send(serverClient, header, payloadBytes)
+            serverClient.send(header, payloadBytes)
         }
     }
 

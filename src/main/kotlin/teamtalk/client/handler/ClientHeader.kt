@@ -2,11 +2,11 @@ package teamtalk.client.handler
 
 import org.json.JSONObject
 
-enum class ClientMessage {
+enum class ClientHeader {
     HELLO, LOGIN, MESSAGE, FILE, BYE;
 
     fun toJSON(chatClient: ChatClient, receiverName: String = "", payloadSize: Int = 0): JSONObject {
-        val type = this@ClientMessage.toString()
+        val type = this@ClientHeader.toString()
 
         return JSONObject().apply {
             put("type", type)

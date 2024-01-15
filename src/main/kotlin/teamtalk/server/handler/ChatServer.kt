@@ -7,6 +7,7 @@ class ChatServer(port: Int) {
 
     private val handler = ServerHandler(this)
     private val gui = ServerGUI(this)
+    private val stats = ServerStatistic(this)
 
     private val IP = InetAddress.getLoopbackAddress()
     private val PORT = port
@@ -26,6 +27,8 @@ class ChatServer(port: Int) {
     fun getPort() = PORT
 
     fun getGUI() = gui
+
+    fun getStats() = stats
 
     fun getClients() = clients
 

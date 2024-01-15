@@ -110,7 +110,7 @@ class ServerGUI(private val chatServer: ChatServer) {
         return statsPane
     }
 
-    fun createMenuBar() = bar(
+    private fun createMenuBar() = bar(
         menu(
             "Datei",
             item("Schliessen", { System.exit(0) })

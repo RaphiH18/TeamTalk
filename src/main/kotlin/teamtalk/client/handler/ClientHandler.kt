@@ -61,7 +61,7 @@ class ClientHandler(private var chatClient: ChatClient) {
                 }
             } while (!(isConnected()) and (timeoutCounter <= connectionLimit))
 
-            send(ClientMessage.HELLO.toJSON(chatClient))
+            send(ClientHeader.HELLO.toJSON(chatClient))
 
             while (isConnected()) {
                 process()
@@ -78,7 +78,7 @@ class ClientHandler(private var chatClient: ChatClient) {
         debug("<- Von Server erhalten (Header): $headerString")
 
         if (jsonUtil.isJSON(headerString)) {
-            val headerJSON = JSONObject(String(headerBytes, Charsets.UTF_8))
+            val headerJSON = JSONObject(headerString)
             val payloadSize = headerJSON.getInt("payloadSize")
 
             when (headerJSON.get("type")) {
@@ -96,10 +96,10 @@ class ClientHandler(private var chatClient: ChatClient) {
                     val messageBytes = ByteArray(payloadSize)
                     input.readFully(messageBytes)
                     val message = String(messageBytes, Charsets.UTF_8)
-                    val contact = contacts.find { it.getUsername() == headerJSON.getString("receiverName") }
 
+                    val contact = contacts.find { it.getUsername() == headerJSON.getString("receiverName") }
                     if (contact != null) {
-                        contact.addMessage(TextMessage(chatClient.getUsername(), Instant.now(), message))
+                        contact.addMessage(TextMessage(chatClient.getUsername(), contact.getUsername(), Instant.now(), message))
                         chatClient.getGUI().updateGuiMessagesFromContact(contact)
                     }
                 }
@@ -108,10 +108,10 @@ class ClientHandler(private var chatClient: ChatClient) {
                     val messageBytes = ByteArray(payloadSize)
                     input.readFully(messageBytes)
                     val message = String(messageBytes, Charsets.UTF_8)
-                    val contact = contacts.find { it.getUsername() == headerJSON.getString("senderName") }
 
+                    val contact = contacts.find { it.getUsername() == headerJSON.getString("senderName") }
                     if (contact != null) {
-                        contact.addMessage(TextMessage(contact.getUsername(), Instant.now(), message))
+                        contact.addMessage(TextMessage(contact.getUsername(), chatClient.getUsername(), Instant.now(), message))
                         chatClient.getGUI().updateGuiMessagesFromContact(contact)
                     }
                 }
@@ -126,6 +126,15 @@ class ClientHandler(private var chatClient: ChatClient) {
         }
     }
 
+    /*
+    Die Methode kann für Textnachrichten sowie auch für Dateien verwendet werden.
+    Sie setzt voraus, dass ein Header und Nutzdaten existieren, welche dann via DataOutputStream über den Socket gesendet werden.
+
+    Der Header beinhaltet alle Kontrollinformationen wie z.B. den Typ oder die Grösse der Nutzdaten (payloadSize).
+    Er kann mithilfe der ClientMessage für alle Nachrichten, die der Client senden muss, zusammengestellt werden.
+
+    Die Nutzdaten werden direkt als ByteArray über den Socket gesendet.
+     */
     fun send(header: JSONObject, payloadBytes: ByteArray = byteArrayOf()) {
         handlerScope.launch {
             if (isConnected()) {
