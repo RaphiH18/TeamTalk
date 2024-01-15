@@ -1,15 +1,21 @@
 package teamtalk.server.handler
 
 import org.json.JSONObject
+import teamtalk.client.messaging.Message
 import teamtalk.logger
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.net.Socket
+import java.time.Instant
 
 class ServerClient(private val socket: Socket, private var username: String = "") {
 
+    private lateinit var loginTime: Instant
+
     private val output = DataOutputStream(socket.getOutputStream())
     private val input = DataInputStream(socket.getInputStream())
+
+    private val messages = mutableListOf<Message>()
 
     fun getSocket() = socket
 
@@ -21,6 +27,10 @@ class ServerClient(private val socket: Socket, private var username: String = ""
 
     fun setUsername(username: String) {
         this.username = username
+    }
+
+    fun setLoginTime(timestamp: Instant) {
+        loginTime = timestamp
     }
 
     fun isLoggedIn() = username != ""

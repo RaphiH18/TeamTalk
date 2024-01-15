@@ -4,11 +4,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import teamtalk.client.messaging.TextMessage
 import teamtalk.jsonUtil
 import teamtalk.logger.debug
 import teamtalk.logger.log
 import java.net.ServerSocket
 import java.net.SocketException
+import java.time.Instant
 
 class ServerHandler(private val server: ChatServer) {
 
@@ -61,6 +63,7 @@ class ServerHandler(private val server: ChatServer) {
 
                 "LOGIN" -> {
                     serverClient.setUsername(headerJSON.get("username").toString())
+                    serverClient.setLoginTime(Instant.now())
                     log("Verbindung zwischen (${serverClient.getUsername()}) und dem Server erfolgreich aufgebaut.")
 
                     broadcast(ServerHeader.STATUS_UPDATE.toJSON(this))
@@ -69,6 +72,7 @@ class ServerHandler(private val server: ChatServer) {
                 "MESSAGE" -> {
                     val messageBytes = ByteArray(payloadSize)
                     serverClient.getInput().readFully(messageBytes)
+                    val messageText = String(messageBytes, Charsets.UTF_8)
 
                     val receiverClient = server.getClients().find { it.getUsername() == headerJSON.getString("receiverName") }
 
@@ -82,6 +86,9 @@ class ServerHandler(private val server: ChatServer) {
                             ),
                             messageBytes
                         )
+
+                        val message = TextMessage(serverClient.getUsername(), receiverClient.getUsername(), Instant.now(), messageText)
+                        server.getStats().messages.add(message)
                     } else {
                         serverClient.send(
                             ServerHeader.MESSAGE_RESPONSE.toJSON(

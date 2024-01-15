@@ -99,7 +99,7 @@ class ClientHandler(private var chatClient: ChatClient) {
 
                     val contact = contacts.find { it.getUsername() == headerJSON.getString("receiverName") }
                     if (contact != null) {
-                        contact.addMessage(TextMessage(chatClient.getUsername(), Instant.now(), message))
+                        contact.addMessage(TextMessage(chatClient.getUsername(), contact.getUsername(), Instant.now(), message))
                         chatClient.getGUI().updateGuiMessagesFromContact(contact)
                     }
                 }
@@ -111,7 +111,7 @@ class ClientHandler(private var chatClient: ChatClient) {
 
                     val contact = contacts.find { it.getUsername() == headerJSON.getString("senderName") }
                     if (contact != null) {
-                        contact.addMessage(TextMessage(contact.getUsername(), Instant.now(), message))
+                        contact.addMessage(TextMessage(contact.getUsername(), chatClient.getUsername(), Instant.now(), message))
                         chatClient.getGUI().updateGuiMessagesFromContact(contact)
                     }
                 }

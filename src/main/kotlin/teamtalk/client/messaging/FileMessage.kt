@@ -4,10 +4,9 @@ import java.io.File
 import java.time.Instant
 
 class FileMessage(senderName: String,
+                  receiverName: String,
                   timestamp: Instant,
-                  private val fileName: String,
-                  private val file: File,
-                  private val fileBytes: Byte) : Message(senderName, timestamp) {
+                  private val file: File) : Message(senderName, receiverName, timestamp) {
 
     override fun getMessage() = file
 
