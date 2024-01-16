@@ -15,14 +15,14 @@ import java.time.Instant
 class ServerHandler(private val server: ChatServer) {
 
     private lateinit var serverSocket: ServerSocket
-
     private val handlerScope = CoroutineScope(Dispatchers.IO)
+    private var serverState = false
 
     fun start() {
         handlerScope.launch {
             serverSocket = ServerSocket(server.getPort(), 20, server.getIP())
             log("Der Server wurde gestartet (IP: ${server.getIP()}, Port: ${server.getPort()})")
-
+            serverState = true
             while (true) {
                 try {
                     val socket = serverSocket.accept()
@@ -38,6 +38,7 @@ class ServerHandler(private val server: ChatServer) {
                     }
                 } catch (e: SocketException) {
                     log("Der Server wurde beendet (Socket closed).")
+                    serverState = false
                     break
                 }
             }
@@ -140,4 +141,6 @@ class ServerHandler(private val server: ChatServer) {
     }
 
     fun getServer() = server
+
+    fun isRunning() = serverState
 }

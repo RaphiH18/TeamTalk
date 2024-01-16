@@ -7,12 +7,17 @@ import javafx.scene.control.*
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
+import javafx.scene.paint.Color
+import javafx.scene.paint.Color.BLACK
+import javafx.scene.paint.Color.GREEN
 import javafx.scene.shape.Circle
 import teamtalk.logger
 import teamtalk.server.handler.ChatServer
 
 class ServerGUI(private val chatServer: ChatServer) {
-
+    private val startBTN = Button("Start")
+    private val stopBTN = Button("Stop")
+    private val statusCIR = Circle(4.0)
     fun createBaseView(): VBox {
         val vBoxBase = VBox()
         val vBoxContent = createContentView()
@@ -24,6 +29,14 @@ class ServerGUI(private val chatServer: ChatServer) {
         }
 
         return vBoxBase
+    }
+
+    fun updateCircle(status: Boolean) {
+        if (status) {
+            statusCIR.fill = GREEN
+        } else {
+            statusCIR.fill = BLACK
+        }
     }
 
     private fun createContentView(): VBox {
@@ -58,21 +71,26 @@ class ServerGUI(private val chatServer: ChatServer) {
     private fun createHandlerArea(): Node {
         val handlerTabPane = TabPane().apply {
             prefWidth = 400.0
+            stopBTN.isDisable = true
 
             val dashboard = VBox()
 
             dashboard.children.add(HBox().apply {
-                children.add(Circle(4.0))
+                children.add(statusCIR)
                 children.add(Label("Server"))
                 children.add(Label("Port: 4444"))
-                children.add(Button("Start").also {
+                children.add(startBTN.also {
                     it.setOnAction {
                         chatServer.start()
+                        startBTN.isDisable = true
+                        stopBTN.isDisable = false
                     }
                 })
-                children.add(Button("Stop").also {
+                children.add(stopBTN.also {
                     it.setOnAction {
                         chatServer.stop()
+                        stopBTN.isDisable = true
+                        startBTN.isDisable = false
                     }
                 })
                 padding = Insets(10.0)

@@ -163,7 +163,9 @@ class ClientGUI(private val chatClient: ChatClient) {
             while (userChoice.items.isEmpty()) {
                 val usernameList = mutableListOf<String>()
                 for (user in chatClient.getServerUsers()) {
-                    usernameList.add(user.getUsername())
+                    if(user.isOnline().not()) {
+                        usernameList.add(user.getUsername())
+                    }
                 }
                 userChoice = ChoiceDialog(usernameList[0], usernameList)
             }

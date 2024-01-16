@@ -90,6 +90,7 @@ class ClientHandler(private var chatClient: ChatClient) {
 //                        }
                         contacts.add(Contact(user.toString()))
                     }
+                    chatClient.getGUI().updateContactStatus(headerJSON)
                 }
 
                 "MESSAGE_RESPONSE" -> {

@@ -21,6 +21,14 @@ enum class ServerHeader {
             when(type) {
                 "HELLO_RESPONSE"-> {
                     put("userList", JSONArray(serverHandler.getServer().getUsers()))
+                    val onlineNames = JSONArray()
+                    for (client in serverHandler.getServer().getClients()) {
+                        if(client.getUsername() != "") {
+                            onlineNames.put(client.getUsername())
+                        }
+                    }
+
+                    put("onlineUserList", onlineNames)
                 }
 
                 "LOGIN_RESPONSE" -> {
