@@ -84,6 +84,7 @@ class ServerGUI(private val chatServer: ChatServer) {
                         chatServer.start()
                         startBTN.isDisable = true
                         stopBTN.isDisable = false
+                        updateCircle(true)
                     }
                 })
                 children.add(stopBTN.also {
@@ -91,6 +92,7 @@ class ServerGUI(private val chatServer: ChatServer) {
                         chatServer.stop()
                         stopBTN.isDisable = true
                         startBTN.isDisable = false
+                        updateCircle(false)
                     }
                 })
                 padding = Insets(10.0)
