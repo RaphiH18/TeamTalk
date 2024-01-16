@@ -15,7 +15,7 @@ class ServerClient(private val socket: Socket, private var username: String = ""
     private val output = DataOutputStream(socket.getOutputStream())
     private val input = DataInputStream(socket.getInputStream())
 
-    private val messages = mutableListOf<Message>()
+    val messages = mutableListOf<Message>()
 
     fun getSocket() = socket
 

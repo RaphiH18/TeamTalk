@@ -15,9 +15,11 @@ import teamtalk.logger
 import teamtalk.server.handler.ChatServer
 
 class ServerGUI(private val chatServer: ChatServer) {
+
     private val startBTN = Button("Start")
     private val stopBTN = Button("Stop")
     private val statusCIR = Circle(4.0)
+
     fun createBaseView(): VBox {
         val vBoxBase = VBox()
         val vBoxContent = createContentView()

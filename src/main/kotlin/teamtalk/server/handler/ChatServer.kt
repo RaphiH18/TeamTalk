@@ -16,7 +16,6 @@ class ChatServer(port: Int) {
 
     fun start() {
         handler.start()
-
     }
 
     fun stop() {
