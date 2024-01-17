@@ -6,8 +6,8 @@ import javafx.scene.Node
 import javafx.scene.control.*
 import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
+import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
-import javafx.scene.paint.Color
 import javafx.scene.paint.Color.BLACK
 import javafx.scene.paint.Color.GREEN
 import javafx.scene.shape.Circle
@@ -16,9 +16,14 @@ import teamtalk.server.handler.ChatServer
 
 class ServerGUI(private val chatServer: ChatServer) {
 
+    val MIN_WIDTH = 1200.0
+    val MIN_HEIGHT = 800.0
+
     private val startBTN = Button("Start")
     private val stopBTN = Button("Stop")
     private val statusCIR = Circle(4.0)
+
+    var controlArea = createControlView()
 
     fun createBaseView(): VBox {
         val vBoxBase = VBox()
@@ -33,7 +38,7 @@ class ServerGUI(private val chatServer: ChatServer) {
         return vBoxBase
     }
 
-    fun updateCircle(status: Boolean) {
+    private fun updateCircle(status: Boolean) {
         if (status) {
             statusCIR.fill = GREEN
         } else {
@@ -47,36 +52,33 @@ class ServerGUI(private val chatServer: ChatServer) {
         }
 
         with(vBoxContent) {
-            children.add(createControlView())
+            children.add(controlArea)
             children.add(logger.createServerView())
         }
 
+        VBox.setVgrow(vBoxContent, Priority.ALWAYS)
         return vBoxContent
     }
 
-    private fun createControlView(): Node {
-        val controlArea = SplitPane()
+    private fun createControlView(): SplitPane {
+        controlArea = SplitPane()
 
         with(controlArea) {
-            setDividerPositions(0.5)
-            prefHeight = 375.0
+            minHeight = 550.0
 
-            items.addAll(createHandlerArea(), createStatsArea())
-
-            dividers[0].positionProperty().addListener { observable, oldValue, newValue ->
-                setDividerPositions(0.5)
-            }
+            items.add(createHandlerArea())
+            items.add(createStatsArea())
         }
+
+        VBox.setVgrow(controlArea, Priority.ALWAYS)
         return controlArea
     }
 
     private fun createHandlerArea(): Node {
         val handlerTabPane = TabPane().apply {
-            prefWidth = 400.0
             stopBTN.isDisable = true
 
             val dashboard = VBox()
-
             dashboard.children.add(HBox().apply {
                 children.add(statusCIR)
                 children.add(Label("Server"))
@@ -102,10 +104,6 @@ class ServerGUI(private val chatServer: ChatServer) {
                 alignment = Pos.CENTER_LEFT
             })
 
-            val settAnchPane = AnchorPane().apply {
-                children.add(Button())
-            }
-
             with(tabs) {
                 add(Tab("Dashboard").apply {
                     isClosable = false
@@ -114,22 +112,23 @@ class ServerGUI(private val chatServer: ChatServer) {
 
                 add(Tab("Einstellungen").apply {
                     isClosable = false
-                    content = settAnchPane
+                    content = null
+                    /*
+                    TODO: Settings im GUI verfügbar machen
+                     */
                 })
             }
         }
 
-        val handlerPane = AnchorPane().apply {
-            children.add(handlerTabPane)
-        }
-
-        return handlerPane
+        return handlerTabPane
     }
 
     private fun createStatsArea(): Node {
-        val statsPane = AnchorPane()
+        val statsTabPane = TabPane().apply {
 
-        return statsPane
+        }
+
+        return statsTabPane
     }
 
     private fun createMenuBar() = bar(

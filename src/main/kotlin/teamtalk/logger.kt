@@ -3,6 +3,7 @@ package teamtalk
 import javafx.geometry.Insets
 import javafx.scene.control.Label
 import javafx.scene.control.TextArea
+import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
 import java.text.SimpleDateFormat
 import java.util.*
@@ -14,8 +15,7 @@ object logger {
     private val PREFIX = "[TeamTalk]"
 
     private var logPane: TextArea = TextArea().apply {
-        prefHeight = 150.0
-        prefWidth = 200.0
+        minHeight = 150.0
         isEditable = false
         isWrapText = true
     }
@@ -44,8 +44,15 @@ object logger {
             padding = Insets(5.0, 0.0, 5.0, 0.0)
         }
 
-        logArea.children.add(logLabel)
-        logArea.children.add(logPane)
+        with(logArea) {
+            minHeight = 200.0
+            maxHeight = 250.0
+            children.add(logLabel)
+            children.add(logPane)
+        }
+
+        VBox.setVgrow(logArea, Priority.ALWAYS)
+        VBox.setVgrow(logPane, Priority.ALWAYS)
         return logArea
     }
 }
