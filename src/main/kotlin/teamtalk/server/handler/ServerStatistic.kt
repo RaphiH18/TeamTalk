@@ -20,6 +20,9 @@ class ServerStatistic(private val server: ChatServer) {
 
     val messages = mutableListOf<Message>()
 
+    private val FILL_KEYWORDS =
+        listOf("der", "die", "das", "und", "oder", "Also", "Quasi", "Sozusagen", "Wie gesagt", "Eigentlich")
+
     private val POSITIVE_KEYWORDS = listOf("gut", "ja", "super", "perfekt", "optimal", "prima")
     private val NEGATIVE_KEYWORDS = listOf("schlecht", "nein", "schade")
     private val NEUTRAL_KEYWORDS = listOf("ok", "in Ordnung", "passt")
@@ -33,7 +36,7 @@ class ServerStatistic(private val server: ChatServer) {
         messages.count() { it is FileMessage }
 
     fun getTotalPositivity(): Double {
-       return 0.0
+        return 0.0
     }
 
     fun getTotalNeutrality(): Double {
@@ -70,5 +73,25 @@ class ServerStatistic(private val server: ChatServer) {
         } else {
             Duration.ZERO
         }
+    }
+
+    fun getTotalContactAddressing(contact: String): Int {
+        //fun getTotalPerContactAddressing(contact: Contact): Int { // Implemntation via Kontaktobjekt -> Eventuell via ID?
+        val addressingTrigger = "@"
+        val triggerFilter = Regex("$addressingTrigger\\w+\\s\\w+")
+        var addressingAmount = 0
+
+        for (message in messages) {
+            println("MESSAGE: " + message.getMessage())
+            triggerFilter.findAll(message.getMessage().toString()).forEach { match ->
+                val word = match.value.replace("@", "")
+                println("CHECK: \n$word\n$contact")
+                if (word == contact) {
+                    addressingAmount++
+                }
+            }
+
+        }
+        return addressingAmount
     }
 }
