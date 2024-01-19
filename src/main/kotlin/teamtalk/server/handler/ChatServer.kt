@@ -9,7 +9,7 @@ class ChatServer(port: Int) {
     private val gui = ServerGUI(this)
     private val stats = ServerStatistic(this)
 
-    private val IP = InetAddress.getLoopbackAddress()
+    private val IP = InetAddress.getLocalHost().hostAddress
     private val PORT = port
 
     private val clients = mutableListOf<ServerClient>()

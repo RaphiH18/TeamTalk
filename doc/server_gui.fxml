@@ -62,44 +62,6 @@
                            <content>
                               <Accordion>
                                 <panes>
-                                  <TitledPane animated="false" text="Übersicht">
-                                       <content>
-                                          <VBox prefHeight="200.0" prefWidth="100.0">
-                                             <children>
-                                                <HBox alignment="CENTER_LEFT" prefHeight="20.0" prefWidth="200.0">
-                                                   <children>
-                                                      <Label text="Anzahl Nachrichten versendet (total):">
-                                                         <padding>
-                                                            <Insets right="50.0" />
-                                                         </padding>
-                                                      </Label>
-                                                      <Label text="3754" textAlignment="RIGHT" />
-                                                   </children>
-                                                </HBox>
-                                                <HBox alignment="CENTER_LEFT" prefHeight="20.0" prefWidth="200.0">
-                                                   <children>
-                                                      <Label text="Anzahl Dateien versendet (total):">
-                                                         <padding>
-                                                            <Insets right="50.0" />
-                                                         </padding>
-                                                      </Label>
-                                                      <Label text="32" textAlignment="RIGHT" />
-                                                   </children>
-                                                </HBox>
-                                                <HBox alignment="CENTER_LEFT" prefHeight="20.0" prefWidth="200.0">
-                                                   <children>
-                                                      <Label text="Durchnschnittliche Antwortzeit pro User:">
-                                                         <padding>
-                                                            <Insets right="50.0" />
-                                                         </padding>
-                                                      </Label>
-                                                      <Label text="467s" textAlignment="RIGHT" />
-                                                   </children>
-                                                </HBox>
-                                             </children>
-                                          </VBox>
-                                       </content>
-                                  </TitledPane>
                                   <TitledPane animated="false" text="Charts">
                                        <content>
                                           <VBox>
@@ -155,6 +117,44 @@
                                                             <MenuItem mnemonicParsing="false" text="Anzahl User online" />
                                                         </items>
                                                       </MenuButton>
+                                                   </children>
+                                                </HBox>
+                                             </children>
+                                          </VBox>
+                                       </content>
+                                  </TitledPane>
+                                  <TitledPane animated="false" text="Übersicht">
+                                       <content>
+                                          <VBox prefHeight="200.0" prefWidth="100.0">
+                                             <children>
+                                                <HBox alignment="CENTER_LEFT" prefHeight="20.0" prefWidth="200.0">
+                                                   <children>
+                                                      <Label text="Anzahl Nachrichten versendet (total):">
+                                                         <padding>
+                                                            <Insets right="50.0" />
+                                                         </padding>
+                                                      </Label>
+                                                      <Label text="3754" textAlignment="RIGHT" />
+                                                   </children>
+                                                </HBox>
+                                                <HBox alignment="CENTER_LEFT" prefHeight="20.0" prefWidth="200.0">
+                                                   <children>
+                                                      <Label text="Anzahl Dateien versendet (total):">
+                                                         <padding>
+                                                            <Insets right="50.0" />
+                                                         </padding>
+                                                      </Label>
+                                                      <Label text="32" textAlignment="RIGHT" />
+                                                   </children>
+                                                </HBox>
+                                                <HBox alignment="CENTER_LEFT" prefHeight="20.0" prefWidth="200.0">
+                                                   <children>
+                                                      <Label text="Durchnschnittliche Antwortzeit pro User:">
+                                                         <padding>
+                                                            <Insets right="50.0" />
+                                                         </padding>
+                                                      </Label>
+                                                      <Label text="467s" textAlignment="RIGHT" />
                                                    </children>
                                                 </HBox>
                                              </children>

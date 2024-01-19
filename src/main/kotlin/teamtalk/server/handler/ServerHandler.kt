@@ -8,6 +8,7 @@ import teamtalk.client.messaging.TextMessage
 import teamtalk.jsonUtil
 import teamtalk.logger.debug
 import teamtalk.logger.log
+import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.SocketException
 import java.time.Instant
@@ -20,7 +21,7 @@ class ServerHandler(private val server: ChatServer) {
 
     fun start() {
         handlerScope.launch {
-            serverSocket = ServerSocket(server.getPort(), 20, server.getIP())
+            serverSocket = ServerSocket(server.getPort(), 20, InetAddress.getByName(server.getIP()))
             log("Der Server wurde gestartet (IP: ${server.getIP()}, Port: ${server.getPort()})")
             serverState = true
             while (true) {
