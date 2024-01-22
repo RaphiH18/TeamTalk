@@ -9,8 +9,8 @@ class ChatServer(port: Int) {
     private val gui = ServerGUI(this)
     private val stats = ServerStatistic(this)
 
-    private val IP = InetAddress.getLocalHost().hostAddress
-    private val PORT = port
+    private var IP = "127.0.0.1"
+    private var PORT = port
 
     private val clients = mutableListOf<ServerClient>()
 
@@ -24,7 +24,15 @@ class ChatServer(port: Int) {
 
     fun getIP() = IP
 
+    fun setIP(newIP: String) {
+        IP = newIP
+    }
+
     fun getPort() = PORT
+
+    fun setPort(newPort: Int) {
+        PORT = newPort
+    }
 
     fun getGUI() = gui
 

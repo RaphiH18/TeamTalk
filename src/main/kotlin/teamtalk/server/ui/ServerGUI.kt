@@ -19,9 +19,22 @@ class ServerGUI(private val chatServer: ChatServer) {
     val MIN_WIDTH = 1200.0
     val MIN_HEIGHT = 800.0
 
+    private val currentPortLbl = Label("4444")
     private val startBTN = Button("Start")
     private val stopBTN = Button("Stop")
     private val statusCIR = Circle(4.0)
+
+    val portLbl = Label("Port").apply {
+        padding = Insets(4.0, 45.0, 0.0, 0.0)
+    }
+    private val portTF = TextField("4444")
+    private val ipTF = TextField("127.0.0.1")
+
+    val applyBtn = Button("Übernehmen").apply {
+        setOnAction {
+            applySettings()
+        }
+    }
 
     var controlArea = createControlView()
 
@@ -36,6 +49,13 @@ class ServerGUI(private val chatServer: ChatServer) {
         }
 
         return vBoxBase
+    }
+
+    private fun applySettings(){
+        currentPortLbl.text = portTF.text
+        chatServer.setPort(portTF.text.toInt())
+        chatServer.setIP(ipTF.text)
+        logger.log("Einstellungen übernommen - IP: ${ipTF.text}, Port: ${portTF.text}")
     }
 
     private fun updateCircle(status: Boolean) {
@@ -82,12 +102,13 @@ class ServerGUI(private val chatServer: ChatServer) {
             dashboard.children.add(HBox().apply {
                 children.add(statusCIR)
                 children.add(Label("Server"))
-                children.add(Label("Port: 4444"))
+                children.add(currentPortLbl)
                 children.add(startBTN.also {
                     it.setOnAction {
                         chatServer.start()
                         startBTN.isDisable = true
                         stopBTN.isDisable = false
+                        applyBtn.isDisable = true
                         updateCircle(true)
                     }
                 })
@@ -96,6 +117,7 @@ class ServerGUI(private val chatServer: ChatServer) {
                         chatServer.stop()
                         stopBTN.isDisable = true
                         startBTN.isDisable = false
+                        applyBtn.isDisable = false
                         updateCircle(false)
                     }
                 })
@@ -110,9 +132,40 @@ class ServerGUI(private val chatServer: ChatServer) {
                     content = dashboard
                 })
 
+                val ipLbl = Label("IP-Adresse").apply{
+                    padding = Insets(4.0, 10.0, 0.0, 0.0)
+                }
+
+                val settingPortHb = HBox().apply{
+                    with(children){
+                        add(portLbl)
+                        add(portTF)
+                    }
+                }
+
+                val settingIPHb = HBox().apply{
+                    with(children){
+                        add(ipLbl)
+                        add(ipTF)
+                    }
+                }
+
+                val settingVb = VBox().apply{
+                    with(children){
+                        add(settingPortHb)
+                        add(settingIPHb)
+                        add(applyBtn)
+                        padding = Insets(10.0)
+                        spacing = 10.0
+                    }
+                }
+
                 add(Tab("Einstellungen").apply {
                     isClosable = false
-                    content = null
+                    content = settingVb
+
+
+
                     /*
                     TODO: Settings im GUI verfügbar machen
                      */

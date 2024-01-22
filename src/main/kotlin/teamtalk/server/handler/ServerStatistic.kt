@@ -11,7 +11,7 @@ class ServerStatistic(private val server: ChatServer) {
 
     Fullwörter:             Balkendiagramm / Kuchendiagramm
     Triggerwörter:          Kuchendiagramm
-    Antwortzeiten:          Liniendiagramm
+    Antwort- und Nutzungs-Zeiten:          Liniendiagramm
 
     Nutzungszeiten:         in Textform
     Filetransfer:           in Textform
@@ -21,7 +21,7 @@ class ServerStatistic(private val server: ChatServer) {
     val messages = mutableListOf<Message>()
 
     private val FILL_KEYWORDS =
-        listOf("der", "die", "das", "und", "oder", "Also", "Quasi", "Sozusagen", "Wie gesagt", "Eigentlich")
+        listOf("der", "die", "das", "und", "eoder", "Also", "Quasi", "Sozusagen", "Wie gesagt", "Eigentlich")
 
     private val POSITIVE_KEYWORDS = listOf("gut", "ja", "super", "perfekt", "optimal", "prima")
     private val NEGATIVE_KEYWORDS = listOf("schlecht", "nein", "schade")
