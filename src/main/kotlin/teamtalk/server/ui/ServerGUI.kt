@@ -4,7 +4,6 @@ import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.control.*
-import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
@@ -30,7 +29,7 @@ class ServerGUI(private val chatServer: ChatServer) {
     private val portTF = TextField("4444")
     private val ipTF = TextField("127.0.0.1")
 
-    val applyBtn = Button("Übernehmen").apply {
+    val applyBTN = Button("Übernehmen").apply {
         setOnAction {
             applySettings()
         }
@@ -51,7 +50,7 @@ class ServerGUI(private val chatServer: ChatServer) {
         return vBoxBase
     }
 
-    private fun applySettings(){
+    private fun applySettings() {
         currentPortLbl.text = portTF.text
         chatServer.setPort(portTF.text.toInt())
         chatServer.setIP(ipTF.text)
@@ -108,7 +107,7 @@ class ServerGUI(private val chatServer: ChatServer) {
                         chatServer.start()
                         startBTN.isDisable = true
                         stopBTN.isDisable = false
-                        applyBtn.isDisable = true
+                        applyBTN.isDisable = true
                         updateCircle(true)
                     }
                 })
@@ -117,7 +116,7 @@ class ServerGUI(private val chatServer: ChatServer) {
                         chatServer.stop()
                         stopBTN.isDisable = true
                         startBTN.isDisable = false
-                        applyBtn.isDisable = false
+                        applyBTN.isDisable = false
                         updateCircle(false)
                     }
                 })
@@ -132,29 +131,29 @@ class ServerGUI(private val chatServer: ChatServer) {
                     content = dashboard
                 })
 
-                val ipLbl = Label("IP-Adresse").apply{
+                val ipLbl = Label("IP-Adresse").apply {
                     padding = Insets(4.0, 10.0, 0.0, 0.0)
                 }
 
-                val settingPortHb = HBox().apply{
-                    with(children){
+                val settingPortHb = HBox().apply {
+                    with(children) {
                         add(portLbl)
                         add(portTF)
                     }
                 }
 
-                val settingIPHb = HBox().apply{
-                    with(children){
+                val settingIPHb = HBox().apply {
+                    with(children) {
                         add(ipLbl)
                         add(ipTF)
                     }
                 }
 
-                val settingVb = VBox().apply{
-                    with(children){
+                val settingVb = VBox().apply {
+                    with(children) {
                         add(settingPortHb)
                         add(settingIPHb)
-                        add(applyBtn)
+                        add(applyBTN)
                         padding = Insets(10.0)
                         spacing = 10.0
                     }
@@ -163,12 +162,6 @@ class ServerGUI(private val chatServer: ChatServer) {
                 add(Tab("Einstellungen").apply {
                     isClosable = false
                     content = settingVb
-
-
-
-                    /*
-                    TODO: Settings im GUI verfügbar machen
-                     */
                 })
             }
         }
@@ -177,8 +170,28 @@ class ServerGUI(private val chatServer: ChatServer) {
     }
 
     private fun createStatsArea(): Node {
-        val statsTabPane = TabPane().apply {
 
+        val chartsPAN = TitledPane("Statistiken", (Label("Inhalt Statistiken")))
+        val overviewPAN = TitledPane("Übersicht", (Label("Inhalt Übersicht")))
+
+        val globaleStatsARC = Accordion().apply {
+            with(panes) {
+                add(chartsPAN)
+                add(overviewPAN)
+            }
+        }
+
+        val statsTabPane = TabPane().apply {
+            with(tabs) {
+                add(Tab("Globale Statistik").apply {
+                    isClosable = false
+                    content = globaleStatsARC
+                })
+                add(Tab("Detailierte Statistik").apply {
+                    isClosable = false
+                    content = Label("Detailierte Statistik")
+                })
+            }
         }
 
         return statsTabPane
