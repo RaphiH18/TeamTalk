@@ -1,7 +1,7 @@
 package teamtalk.server.handler
 
 import org.json.JSONObject
-import teamtalk.client.messaging.Message
+import teamtalk.message.Message
 import teamtalk.logger
 import java.io.DataInputStream
 import java.io.DataOutputStream

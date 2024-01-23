@@ -4,6 +4,7 @@ import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.control.*
+import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
@@ -162,6 +163,9 @@ class ServerGUI(private val chatServer: ChatServer) {
                 add(Tab("Einstellungen").apply {
                     isClosable = false
                     content = settingVb
+                    /*
+                    TODO: Settings im GUI verfügbar machen
+                     */
                 })
             }
         }

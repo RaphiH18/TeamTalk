@@ -1,8 +1,8 @@
 package teamtalk.server.handler
 
-import teamtalk.client.messaging.FileMessage
-import teamtalk.client.messaging.Message
-import teamtalk.client.messaging.TextMessage
+import teamtalk.message.FileMessage
+import teamtalk.message.Message
+import teamtalk.message.TextMessage
 import java.time.Duration
 
 class ServerStatistic(private val server: ChatServer) {

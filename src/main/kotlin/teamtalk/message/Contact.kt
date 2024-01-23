@@ -1,4 +1,8 @@
-package teamtalk.client.messaging
+package teamtalk.message
+
+import teamtalk.message.FileMessage
+import teamtalk.message.Message
+import teamtalk.message.TextMessage
 
 class Contact(private val username: String, private var online: Boolean = false) {
 

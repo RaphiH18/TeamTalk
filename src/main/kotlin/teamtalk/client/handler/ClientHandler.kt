@@ -5,8 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import teamtalk.client.messaging.Contact
-import teamtalk.client.messaging.TextMessage
+import teamtalk.message.Contact
+import teamtalk.message.TextMessage
 import teamtalk.jsonUtil
 import teamtalk.logger.debug
 import teamtalk.logger.log
@@ -100,7 +100,14 @@ class ClientHandler(private var chatClient: ChatClient) {
 
                     val contact = contacts.find { it.getUsername() == headerJSON.getString("receiverName") }
                     if (contact != null) {
-                        contact.addMessage(TextMessage(chatClient.getUsername(), contact.getUsername(), Instant.now(), message))
+                        contact.addMessage(
+                            TextMessage(
+                                chatClient.getUsername(),
+                                contact.getUsername(),
+                                Instant.now(),
+                                message
+                            )
+                        )
                         chatClient.getGUI().updateGuiMessagesFromContact(contact)
                     }
                 }
@@ -112,7 +119,14 @@ class ClientHandler(private var chatClient: ChatClient) {
 
                     val contact = contacts.find { it.getUsername() == headerJSON.getString("senderName") }
                     if (contact != null) {
-                        contact.addMessage(TextMessage(contact.getUsername(), chatClient.getUsername(), Instant.now(), message))
+                        contact.addMessage(
+                            TextMessage(
+                                contact.getUsername(),
+                                chatClient.getUsername(),
+                                Instant.now(),
+                                message
+                            )
+                        )
                         chatClient.getGUI().updateGuiMessagesFromContact(contact)
                     }
                 }
@@ -145,9 +159,39 @@ class ClientHandler(private var chatClient: ChatClient) {
 
                 if (payloadBytes.isNotEmpty()) {
                     output.write(payloadBytes)
+                    output.flush()
                 }
 
                 debug("-> An Server gesendet (Header): $header")
+            } else {
+                throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
+            }
+        }
+    }
+
+    fun sendHeader(header: JSONObject) {
+        handlerScope.launch {
+            if (isConnected()) {
+                val headerBytes = header.toString().toByteArray(Charsets.UTF_8)
+                output.writeInt(headerBytes.size)
+                output.write(headerBytes)
+
+                debug("-> An Server gesendet: Nur Header ($header)")
+            } else {
+                throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
+            }
+        }
+    }
+
+    fun sendPayload(payloadBytes: ByteArray = byteArrayOf()) {
+        handlerScope.launch {
+            if (isConnected()) {
+                if (payloadBytes.isNotEmpty()) {
+                    output.write(payloadBytes)
+                    output.flush()
+                }
+
+                debug("-> An Server gesendet: Nur Daten mit der Grösse ${payloadBytes.size}")
             } else {
                 throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
             }

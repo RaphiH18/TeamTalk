@@ -1,4 +1,4 @@
-package teamtalk.client.messaging
+package teamtalk.message
 
 import java.time.Instant
 import java.time.ZoneId

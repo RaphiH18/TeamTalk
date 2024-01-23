@@ -5,7 +5,7 @@ import org.json.JSONObject
 enum class ClientHeader {
     HELLO, LOGIN, MESSAGE, FILE, BYE;
 
-    fun toJSON(chatClient: ChatClient, receiverName: String = "", payloadSize: Int = 0): JSONObject {
+    fun toJSON(chatClient: ChatClient, receiverName: String = "", payloadSize: Long = 0): JSONObject {
         val type = this@ClientHeader.toString()
 
         return JSONObject().apply {

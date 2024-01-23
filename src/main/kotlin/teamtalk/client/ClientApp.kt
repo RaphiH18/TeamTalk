@@ -15,6 +15,7 @@ class ClientApp : Application() {
 
     override fun start(stage: Stage) {
         CoroutineScope(Dispatchers.JavaFx).launch {
+            chatClient.getGUI().primaryStage = stage
             chatClient.getGUI().startConnectionGUI(stage)
             chatClient.getGUI().waitForConnected()
             delay(100)
