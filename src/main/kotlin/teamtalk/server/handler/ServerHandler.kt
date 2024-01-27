@@ -21,6 +21,7 @@ class ServerHandler(private val server: ChatServer) {
 
     fun start() {
         handlerScope.launch {
+            println("handler: ${Dispatchers.IO.toString()}")
             serverSocket = ServerSocket(server.getPort(), 20, InetAddress.getByName(server.getIP()))
             log("Der Server wurde gestartet (IP: ${server.getIP()}, Port: ${server.getPort()})")
             serverState = true
@@ -90,7 +91,7 @@ class ServerHandler(private val server: ChatServer) {
                         )
 
                         val message = TextMessage(serverClient.getUsername(), receiverClient.getUsername(), Instant.now(), messageText)
-                        server.getStats().messages.add(message)
+                        server.getStats().newMessages.add(message)
                     } else {
                         serverClient.send(
                             ServerHeader.MESSAGE_RESPONSE.toJSON(

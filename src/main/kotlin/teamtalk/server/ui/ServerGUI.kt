@@ -1,20 +1,28 @@
 package teamtalk.server.ui
 
+import javafx.collections.FXCollections
+import javafx.collections.ObservableList
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Node
+import javafx.scene.chart.*
 import javafx.scene.control.*
-import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
 import javafx.scene.paint.Color.BLACK
 import javafx.scene.paint.Color.GREEN
 import javafx.scene.shape.Circle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.javafx.JavaFx
+import kotlinx.coroutines.launch
 import teamtalk.logger
 import teamtalk.server.handler.ChatServer
 
 class ServerGUI(private val chatServer: ChatServer) {
+
+    val guiScope = CoroutineScope(Dispatchers.JavaFx)
 
     val MIN_WIDTH = 1200.0
     val MIN_HEIGHT = 800.0
@@ -37,6 +45,55 @@ class ServerGUI(private val chatServer: ChatServer) {
     }
 
     var controlArea = createControlView()
+    private var pieChartData = FXCollections.observableArrayList<PieChart.Data>()
+    private var fillKeywordPIC = PieChart().apply {
+        title = "Verwendete Füllwörter insgesamt"
+    }
+
+    private val xAxis = CategoryAxis()
+    private val yAxis = NumberAxis()
+    private val ratingKeywordData = XYChart.Series<String, Number>()
+    private val ratingKeywordBAC = BarChart(xAxis, yAxis).apply {
+        title = "Verwendete Wertungswörter insgesamt"
+    }
+
+    var initiate = true
+
+    fun updateCharts(fillKeywordChartData: ObservableList<PieChart.Data>, ratingKeywordChartData: List<XYChart.Series<String, Number>>) {
+        if (initiate) {
+            initiate = false
+            guiScope.launch {
+                fillKeywordPIC.data = pieChartData
+            }
+        }
+
+        updateFillKeywordChart(fillKeywordChartData)
+        println("TESTING" + ratingKeywordChartData)
+        //updateRatingKeywordChart(ratingKeywordChartData)
+    }
+
+    fun updateRatingKeywordChart(RatingKeywordChartData: XYChart.Series<String, Number>){
+        println("Test")
+    }
+    fun updateFillKeywordChart(FillKeywordChartData: ObservableList<PieChart.Data>) {
+        for (tempData in FillKeywordChartData) {
+            var newData = true
+            for (data in pieChartData) {
+                if (data.name == tempData.name) {
+                    guiScope.launch {
+                        data.pieValue = tempData.pieValue
+                    }
+                    newData = false
+                    break
+                }
+            }
+            if (newData) {
+                guiScope.launch {
+                    pieChartData.add(tempData)
+                }
+            }
+        }
+    }
 
     fun createBaseView(): VBox {
         val vBoxBase = VBox()
@@ -82,10 +139,8 @@ class ServerGUI(private val chatServer: ChatServer) {
 
     private fun createControlView(): SplitPane {
         controlArea = SplitPane()
-
         with(controlArea) {
             minHeight = 550.0
-
             items.add(createHandlerArea())
             items.add(createStatsArea())
         }
@@ -174,8 +229,24 @@ class ServerGUI(private val chatServer: ChatServer) {
     }
 
     private fun createStatsArea(): Node {
+        val globalLeftVB = VBox().apply {
+            guiScope.launch {
+                children.add(fillKeywordPIC)
+            }
+        }
+        val globalRightVB = VBox().apply {
+            guiScope.launch {
+                children.add(ratingKeywordBAC)
+            }
+        }
+        val globalHB = HBox().apply {
+            with(children) {
+                add(globalLeftVB)
+                add(globalRightVB)
+            }
+        }
 
-        val chartsPAN = TitledPane("Statistiken", (Label("Inhalt Statistiken")))
+        val chartsPAN = TitledPane("Statistiken", globalHB)
         val overviewPAN = TitledPane("Übersicht", (Label("Inhalt Übersicht")))
 
         val globaleStatsARC = Accordion().apply {
