@@ -14,7 +14,7 @@ class ClientApp : Application() {
     private val chatClient = ChatClient()
 
     override fun start(stage: Stage) {
-        CoroutineScope(Dispatchers.JavaFx).launch {
+        chatClient.getGUI().guiScope.launch {
             chatClient.getGUI().primaryStage = stage
             chatClient.getGUI().startConnectionGUI(stage)
             chatClient.getGUI().waitForConnected()

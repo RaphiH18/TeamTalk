@@ -1,5 +1,6 @@
 package teamtalk.server.handler
 
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import teamtalk.message.Message
 import teamtalk.logger
@@ -45,5 +46,22 @@ class ServerClient(private val socket: Socket, private var username: String = ""
         }
 
         logger.debug("-> An Client gesendet (Header): $header")
+    }
+
+    fun sendHeader(header: JSONObject) {
+        val headerBytes = header.toString().toByteArray(Charsets.UTF_8)
+        output.writeInt(headerBytes.size)
+        output.write(headerBytes)
+
+        logger.debug("-> An Client gesendet: Nur Header ($header)")
+    }
+
+    fun sendPayload(payloadBytes: ByteArray = byteArrayOf()) {
+        if (payloadBytes.isNotEmpty()) {
+            output.write(payloadBytes)
+            output.flush()
+        }
+
+        logger.debug("-> An Client gesendet: Nur Daten mit der Grösse ${payloadBytes.size}")
     }
 }

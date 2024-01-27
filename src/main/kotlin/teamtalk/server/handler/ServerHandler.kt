@@ -48,7 +48,9 @@ class ServerHandler(private val server: ChatServer) {
     }
 
     private fun process(serverClient: ServerClient) {
+        println("Ready for next message")
         val headerSize = serverClient.getInput().readInt()
+        println("Angekündigte Headersize: $headerSize")
         val headerBytes = ByteArray(headerSize)
         serverClient.getInput().readFully(headerBytes)
         val headerString = String(headerBytes, Charsets.UTF_8)
@@ -106,7 +108,43 @@ class ServerHandler(private val server: ChatServer) {
                 }
 
                 "FILE" -> {
+                    val receiverClient = server.getClients().find { it.getUsername() == headerJSON.getString("receiverName") }
 
+                    if (receiverClient != null) {
+                        println("File wird weitergeleitet!")
+                        receiverClient.sendHeader(headerJSON)
+
+                        val fileChunkBytes = ByteArray(4 * 1024)
+//                        var amountBytesRead = 0
+//                        while (true) {
+//                            println("Bytes forwarded: $amountBytesRead")
+//                            amountBytesRead = serverClient.getInput().read(fileChunkBytes.copyOf(amountBytesRead))
+//
+//                            if (amountBytesRead == -1) {
+//                                break
+//                            }
+//                            receiverClient.sendPayload(fileChunkBytes)
+//                        }
+
+                        var bytesReadTotal = 0
+                        while(bytesReadTotal < payloadSize) {
+                            val bytesRead = serverClient.getInput().read(fileChunkBytes)
+                            bytesReadTotal += bytesRead
+                            debug("<- Von Server erhalten: Nur Daten, eingelesen: $bytesRead")
+                            receiverClient.sendPayload(fileChunkBytes.copyOf(bytesRead))
+                        }
+                        println("Alles gesendet!")
+                    } else {
+                        serverClient.send(
+                            ServerHeader.MESSAGE_RESPONSE.toJSON(
+                                this,
+                                "USER_OFFLINE",
+                                headerJSON.getString("receiverName"),
+                                serverClient.getUsername(),
+                                headerJSON.getInt("payloadSize")
+                            )
+                        )
+                    }
                 }
 
                 "BYE" -> {

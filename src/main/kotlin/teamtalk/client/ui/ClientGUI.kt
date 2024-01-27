@@ -1,31 +1,41 @@
 package teamtalk.client.ui
 
-import javafx.application.Platform
 import javafx.collections.FXCollections
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.Scene
 import javafx.scene.control.*
+import javafx.scene.control.Alert.AlertType
+import javafx.scene.control.ButtonBar.ButtonData
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.text.Font
 import javafx.stage.FileChooser
+import javafx.stage.FileChooser.ExtensionFilter
 import javafx.stage.Stage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.javafx.JavaFx
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import teamtalk.client.handler.ChatClient
 import teamtalk.client.handler.ClientHeader
+import teamtalk.message.Contact
 import teamtalk.message.FileMessage
 import teamtalk.message.TextMessage
 import teamtalk.message.toFormattedString
-import teamtalk.logger.debug
-import teamtalk.message.Contact
+import java.awt.Desktop
 import java.io.File
 import java.io.FileInputStream
+import java.util.*
 import kotlin.system.exitProcess
 
+
 class ClientGUI(private val chatClient: ChatClient) {
+
+    val guiScope = CoroutineScope(Dispatchers.JavaFx)
 
     lateinit var primaryStage: Stage
 
@@ -39,6 +49,7 @@ class ClientGUI(private val chatClient: ChatClient) {
 
     private var sendFileBtn = Button("Senden")
     private var chosenFileLbl = Label("Keine Datei zum Senden ausgewählt")
+    private var receivedFilesVBox = VBox()
     private lateinit var fileToSend: File
 
     private var currentUserLbl = Label()
@@ -166,7 +177,7 @@ class ClientGUI(private val chatClient: ChatClient) {
     }
 
     fun startUserselectionGUI(stage: Stage) {
-        Platform.runLater {
+        guiScope.launch {
             var userChoice: ChoiceDialog<String> = ChoiceDialog()
             while (userChoice.items.isEmpty()) {
                 val usernameList = mutableListOf<String>()
@@ -221,7 +232,7 @@ class ClientGUI(private val chatClient: ChatClient) {
                 contactData.add(contact.getUsername())
             }
         }
-        Platform.runLater {
+        guiScope.launch {
             contactList.items = contactData
         }
     }
@@ -320,31 +331,29 @@ class ClientGUI(private val chatClient: ChatClient) {
             style = ("-fx-background-color: #E8E8E8")
         }
 
-        // Ergänzen dynamische Gruppe für Downloadable Files
-        val testFile1Btn = Button("Meilensteintrendanalyse.xlsx").apply {
-            prefWidth = 250.0
-        }
+//        // Ergänzen dynamische Gruppe für Downloadable Files
+//        val testFile1Btn = Button("Meilensteintrendanalyse.xlsx").apply {
+//            prefWidth = 250.0
+//        }
+//
+//        val testFile1Vb = VBox().apply {
+//            padding = Insets(5.0, 0.0, 0.0, 0.0)
+//            children.add(testFile1Btn)
+//        }
+//
+//        val testFile2Btn = Button("Praesentation.pptx").apply {
+//            prefWidth = 250.0
+//        }
+//        val testFile2Content = VBox().apply {
+//            padding = Insets(5.0, 0.0, 0.0, 0.0)
+//            children.add(testFile2Btn)
+//        }
 
-        val testFile1Vb = VBox().apply {
-            padding = Insets(5.0, 0.0, 0.0, 0.0)
-            children.add(testFile1Btn)
-        }
-
-        val testFile2Btn = Button("Praesentation.pptx").apply {
-            prefWidth = 250.0
-        }
-        val testFile2Content = VBox().apply {
-            padding = Insets(5.0, 0.0, 0.0, 0.0)
-            children.add(testFile2Btn)
-        }
-
-        val receiveContentVb = VBox().apply {
+        receivedFilesVBox = VBox().apply {
             prefHeight = 390.0
             padding = Insets(5.0, 0.0, 0.0, 20.0)
             with(children) {
                 add(receiveLbl)
-                add(testFile1Vb)
-                add(testFile2Content)
             }
         }
 
@@ -376,7 +385,6 @@ class ClientGUI(private val chatClient: ChatClient) {
                     chosenFileLbl.text = fileToSend.name
                     sendFileBtn.isDisable = false
                 }
-                println("File chosen!")
             }
         }
 
@@ -392,25 +400,30 @@ class ClientGUI(private val chatClient: ChatClient) {
             prefWidth = 75.0
             isDisable = true
             setOnAction {
-                if (fileToSend.exists()) {
-                    chatClient.getHandler().sendHeader(ClientHeader.FILE.toJSON(chatClient, currentUser, fileToSend.length()))
+                if (currentUser != "") {
+                    if (fileToSend.exists()) {
+                        chatClient.getHandler().handlerScope.launch {
+                            val messageHeader = ClientHeader.FILE.toJSON(chatClient, currentUser, fileToSend.length(), fileToSend.name)
+                            chatClient.getHandler().sendHeader(messageHeader)
 
-                    val fileInputStream = FileInputStream(fileToSend)
-                    val bufferFileBytes = ByteArray(4 * 1024)
+                            val fileInputStream = FileInputStream(fileToSend)
+                            val bufferFileBytes = ByteArray(4 * 1024)
 
-                    while(true) {
-                        val amountBytesRead = fileInputStream.read(bufferFileBytes)
-                        if (amountBytesRead == -1) {
-                            break
+                            while (true) {
+                                val amountBytesRead = fileInputStream.read(bufferFileBytes)
+                                if (amountBytesRead == -1) {
+                                    break
+                                }
+                                chatClient.getHandler().sendPayload(bufferFileBytes.copyOf(amountBytesRead))
+                            }
+                            fileInputStream.close()
                         }
-                        chatClient.getHandler().sendPayload(bufferFileBytes.copyOf(amountBytesRead))
                     }
-                    fileInputStream.close()
-
-                    isDisable = true
-                    filePickerBtn.text = "Datei auswählen"
-                    chosenFileLbl.text = "Noch keine Datei ausgewählt"
                 }
+
+                isDisable = true
+                filePickerBtn.text = "Datei auswählen"
+                chosenFileLbl.text = "Noch keine Datei ausgewählt"
             }
         }
 
@@ -421,6 +434,7 @@ class ClientGUI(private val chatClient: ChatClient) {
                 add(sendFileBtn)
             }
         }
+
         val sendContentVb = VBox().apply {
             padding = Insets(0.0, 0.0, 0.0, 20.0)
             with(children) {
@@ -434,7 +448,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             padding = Insets(10.0, 0.0, 0.0, 10.0)
             with(children) {
                 add(dataTransferLbl)
-                add(receiveContentVb)
+                add(receivedFilesVBox)
                 add(sendContentVb)
             }
         }
@@ -457,18 +471,73 @@ class ClientGUI(private val chatClient: ChatClient) {
     }
 
     fun updateGuiMessagesFromContact(contact: Contact) {
-        debug("Updatig GUI for Contact: ${contact.getUsername()}")
-        var outputText = ""
-        for (message in contact.getMessages()) {
+        for (message in contact.getNewMessages()) {
             when (message) {
-                is TextMessage -> outputText += ("${
-                    message.getTimestamp().toFormattedString()
-                } - ${message.getSenderName()}\n ${message.getMessage()}\n\n")
-
-                is FileMessage -> return //TODO: File-Anzeige im GUI
+                is TextMessage -> {
+                    outputChatTa.appendText("${message.getTimestamp().toFormattedString()} - ${message.getSenderName()}\n ${message.getMessage()}\n\n")
+                }
+                is FileMessage -> {
+                    addFileToGUI(message.getMessage())
+                }
             }
         }
-        outputChatTa.text = outputText
+    }
+
+    private fun addFileToGUI(file: File) {
+        guiScope.launch {
+            val fileButton = Button(file.name).apply {
+                prefWidth = 250.0
+                setOnAction {
+                    startSaveFileGUI(this, file)
+                }
+            }
+
+            val fileVb = VBox().apply {
+                padding = Insets(5.0, 0.0, 0.0, 0.0)
+                children.add(fileButton)
+            }
+
+            receivedFilesVBox.children.add(fileVb)
+        }
+    }
+
+    private fun startSaveFileGUI(button: Button, file: File) {
+        val alert = Alert(AlertType.CONFIRMATION)
+        alert.title = file.name
+        alert.headerText = "Was möchten Sie tun?"
+
+        val openButton = ButtonType("Öffnen")
+        val saveAsButton = ButtonType("Speichern unter...")
+        val cancelButton = ButtonType("Abbrechen", ButtonData.CANCEL_CLOSE)
+
+        if (Desktop.isDesktopSupported()) {
+            alert.buttonTypes.setAll(openButton, saveAsButton, cancelButton)
+        } else {
+            alert.buttonTypes.setAll(saveAsButton, cancelButton)
+        }
+
+        val result = alert.showAndWait()
+
+        if (result.get() == openButton) {
+            alert.close()
+            Desktop.getDesktop().open(file)
+        } else if (result.get() == saveAsButton) {
+            alert.close()
+            val fileChooser = FileChooser()
+            val fileExtension = ExtensionFilter(file.extension.uppercase(Locale.getDefault()) + "-Datei", "*.${file.extension}")
+            fileChooser.extensionFilters.add(fileExtension)
+
+            val chosenFile = fileChooser.showSaveDialog(primaryStage)
+            if (chosenFile != null) {
+                file.renameTo(chosenFile)
+                button.text = chosenFile.name
+                button.setOnAction {
+                    Desktop.getDesktop().open(chosenFile)
+                }
+            }
+        } else {
+            alert.close()
+        }
     }
 
     fun getCurrentUserChat(user: String) {

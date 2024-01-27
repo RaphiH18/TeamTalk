@@ -1,28 +1,29 @@
 package teamtalk.client.handler
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import teamtalk.message.Contact
 import teamtalk.message.TextMessage
 import teamtalk.jsonUtil
 import teamtalk.logger.debug
 import teamtalk.logger.log
-import java.io.DataInputStream
-import java.io.DataOutputStream
-import java.io.IOException
+import teamtalk.message.FileMessage
+import java.io.*
 import java.net.Socket
 import java.time.Instant
 
 class ClientHandler(private var chatClient: ChatClient) {
 
     private lateinit var socket: Socket
-    private lateinit var output: DataOutputStream
-    private lateinit var input: DataInputStream
 
-    private val handlerScope = CoroutineScope(Dispatchers.IO)
+    private lateinit var input: DataInputStream
+    private lateinit var output: DataOutputStream
+    val handlerScope = CoroutineScope(Dispatchers.IO)
+    private val mutex = Mutex()
+    val messageChannel = Channel<Pair<JSONObject?, ByteArray?>>()
 
     private var status = "Bereit"
 
@@ -76,7 +77,6 @@ class ClientHandler(private var chatClient: ChatClient) {
         val headerString = String(headerBytes, Charsets.UTF_8)
 
         debug("<- Von Server erhalten (Header): $headerString")
-
         if (jsonUtil.isJSON(headerString)) {
             val headerJSON = JSONObject(headerString)
             val payloadSize = headerJSON.getInt("payloadSize")
@@ -131,6 +131,38 @@ class ClientHandler(private var chatClient: ChatClient) {
                     }
                 }
 
+                "FILE" -> {
+                    debug("<- Von Server erhalten: Nur Daten mit der Grösse $payloadSize")
+                    val fileBytes = ByteArray(payloadSize)
+
+                    var bytesReadTotal = 0
+                    while (bytesReadTotal < payloadSize) {
+                        val bytesRead = input.read(fileBytes, bytesReadTotal, payloadSize - bytesReadTotal)
+                        bytesReadTotal += bytesRead
+                        debug("<- Von Server erhalten: Nur Daten, eingelesen: $bytesRead")
+                    }
+
+                    val userHome = System.getProperty("user.home")
+                    val fileName = headerJSON.getString("filename")
+                    val file = File(userHome, fileName)
+                    val fos = FileOutputStream(file)
+                    fos.write(fileBytes)
+                    fos.close()
+
+                    val contact = contacts.find { it.getUsername() == headerJSON.getString("senderName") }
+                    if (contact != null) {
+                        contact.addMessage(
+                            FileMessage(
+                                contact.getUsername(),
+                                chatClient.getUsername(),
+                                Instant.now(),
+                                file
+                            )
+                        )
+                        chatClient.getGUI().updateGuiMessagesFromContact(contact)
+                    }
+                }
+
                 "STATUS_UPDATE" -> {
                     chatClient.getGUI().updateContactStatus(headerJSON)
                     chatClient.getGUI().updateContactView()
@@ -150,51 +182,48 @@ class ClientHandler(private var chatClient: ChatClient) {
 
     Die Nutzdaten werden direkt als ByteArray über den Socket gesendet.
      */
-    fun send(header: JSONObject, payloadBytes: ByteArray = byteArrayOf()) {
+    fun send(header: JSONObject?, payloadBytes: ByteArray? = byteArrayOf()) {
         handlerScope.launch {
-            if (isConnected()) {
-                val headerBytes = header.toString().toByteArray(Charsets.UTF_8)
-                output.writeInt(headerBytes.size)
-                output.write(headerBytes)
+            if (header != null) {
+                sendHeader(header)
+            }
 
-                if (payloadBytes.isNotEmpty()) {
-                    output.write(payloadBytes)
-                    output.flush()
-                }
-
-                debug("-> An Server gesendet (Header): $header")
-            } else {
-                throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
+            if (payloadBytes != null) {
+                sendPayload(payloadBytes)
             }
         }
     }
 
-    fun sendHeader(header: JSONObject) {
-        handlerScope.launch {
-            if (isConnected()) {
-                val headerBytes = header.toString().toByteArray(Charsets.UTF_8)
-                output.writeInt(headerBytes.size)
-                output.write(headerBytes)
+    suspend fun sendHeader(header: JSONObject) {
+        if (isConnected()) {
+            val headerBytes = header.toString().toByteArray(Charsets.UTF_8)
 
-                debug("-> An Server gesendet: Nur Header ($header)")
-            } else {
-                throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
+            if (headerBytes.isNotEmpty()) {
+                mutex.withLock {
+                    output.writeInt(headerBytes.size)
+                    output.write(headerBytes)
+                    output.flush()
+                }
             }
+
+            debug("-> An Server gesendet (${headerBytes.size} Bytes): Nur Header ($header)")
+        } else {
+            throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
         }
     }
 
-    fun sendPayload(payloadBytes: ByteArray = byteArrayOf()) {
-        handlerScope.launch {
-            if (isConnected()) {
-                if (payloadBytes.isNotEmpty()) {
+    suspend fun sendPayload(payloadBytes: ByteArray = byteArrayOf()) {
+        if (isConnected()) {
+            if (payloadBytes.isNotEmpty()) {
+                mutex.withLock {
                     output.write(payloadBytes)
                     output.flush()
                 }
-
-                debug("-> An Server gesendet: Nur Daten mit der Grösse ${payloadBytes.size}")
-            } else {
-                throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
             }
+
+            debug("-> An Server gesendet (${payloadBytes.size} Bytes): Nur Daten")
+        } else {
+            throw IllegalStateException("Keine Verbindung - bitte zuerst eine Verbindung aufbauen.")
         }
     }
 
