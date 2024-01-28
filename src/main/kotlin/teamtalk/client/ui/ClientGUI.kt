@@ -50,7 +50,10 @@ class ClientGUI(private val chatClient: ChatClient) {
     private var sendFileBtn = Button("Senden")
     private var chosenFileLbl = Label("Keine Datei zum Senden ausgewählt")
     private var receivedFilesVBox = VBox()
+    private val receivedFiles = mutableListOf<VBox>()
     private lateinit var fileToSend: File
+
+    private val CHAT_EMPTY = "Chatfenster..."
 
     private var currentUserLbl = Label()
     private var currentUser = ""
@@ -243,11 +246,12 @@ class ClientGUI(private val chatClient: ChatClient) {
             maxWidth = 200.0
             prefHeight = 600.0
             setOnMouseClicked { _ ->
-                val selectedContact =
-                    chatClient.getHandler().getContacts().find { it.getUsername() == selectionModel.selectedItem }
-                if (selectedContact != null) {
-                    currentUser = selectedContact.getUsername()
-                    updateGuiMessagesFromContact(selectedContact)
+                val selectedContact = chatClient.getHandler().getContacts().find { it.getUsername() == selectionModel.selectedItem }
+                if ((selectedContact != null)) {
+                    if (selectedContact.getUsername() != currentUser) {
+                        updateGuiMessagesFromContact(selectedContact, "GUI_CLICK")
+                        currentUser = selectedContact.getUsername()
+                    }
                 }
             }
         }
@@ -275,7 +279,7 @@ class ClientGUI(private val chatClient: ChatClient) {
         outputChatTa.apply {
             prefHeight = 300.0
             prefWidth = 280.0
-            text = "Chatfenster..."
+            text = CHAT_EMPTY
             isEditable = false
         }
 
@@ -470,14 +474,48 @@ class ClientGUI(private val chatClient: ChatClient) {
         return allContentVb
     }
 
-    fun updateGuiMessagesFromContact(contact: Contact) {
-        for (message in contact.getNewMessages()) {
-            when (message) {
-                is TextMessage -> {
-                    outputChatTa.appendText("${message.getTimestamp().toFormattedString()} - ${message.getSenderName()}\n ${message.getMessage()}\n\n")
+    fun updateGuiMessagesFromContact(contact: Contact, updateCause: String) {
+        println("update is for contact=${contact.getUsername()}")
+        println("currentUser=$currentUser")
+        var fetchOnlyNewMessages = false
+        if (currentUser == contact.getUsername()) {
+            fetchOnlyNewMessages = true
+        }
+        if (contact.getMessages().none { it is TextMessage }) {
+            println("No texts for this contact! (${contact.getUsername()})")
+            outputChatTa.text = ""
+        }
+        if (contact.getMessages().none() {it is FileMessage}) {
+            println("No files for this contact! (${contact.getUsername()})")
+        }
+        if (fetchOnlyNewMessages) {
+            println("Updating only new messages")
+            for (message in contact.getNewMessages()) {
+                println(message)
+                when (message) {
+                    is TextMessage -> {
+                        outputChatTa.appendText("${message.getTimestamp().toFormattedString()} - ${message.getSenderName()}\n ${message.getMessage()}\n\n")
+                    }
+                    is FileMessage -> {
+                        addFileToGUI(message.getMessage())
+                    }
                 }
-                is FileMessage -> {
-                    addFileToGUI(message.getMessage())
+            }
+        } else {
+            if (updateCause == "GUI_CLICK") {
+                println("updating all messages!")
+                outputChatTa.text = ""
+                receivedFilesVBox.children.clear()
+                for (message in contact.getMessages()) {
+                    println(message)
+                    when (message) {
+                        is TextMessage -> {
+                            outputChatTa.appendText("${message.getTimestamp().toFormattedString()} - ${message.getSenderName()}\n ${message.getMessage()}\n\n")
+                        }
+                        is FileMessage -> {
+                            addFileToGUI(message.getMessage())
+                        }
+                    }
                 }
             }
         }
