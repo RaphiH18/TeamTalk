@@ -108,7 +108,7 @@ class ClientHandler(private var chatClient: ChatClient) {
                                 message
                             )
                         )
-                        chatClient.getGUI().updateGuiMessagesFromContact(contact)
+                        chatClient.getGUI().updateGuiMessagesFromContact(contact, "NEW_MESSAGE")
                     }
                 }
 
@@ -127,7 +127,7 @@ class ClientHandler(private var chatClient: ChatClient) {
                                 message
                             )
                         )
-                        chatClient.getGUI().updateGuiMessagesFromContact(contact)
+                        chatClient.getGUI().updateGuiMessagesFromContact(contact, "NEW_MESSAGE")
                     }
                 }
 
@@ -159,7 +159,7 @@ class ClientHandler(private var chatClient: ChatClient) {
                                 file
                             )
                         )
-                        chatClient.getGUI().updateGuiMessagesFromContact(contact)
+                        chatClient.getGUI().updateGuiMessagesFromContact(contact, "NEW_MESSAGE")
                     }
                 }
 
