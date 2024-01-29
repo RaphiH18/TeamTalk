@@ -67,7 +67,8 @@ class ServerGUI(private val chatServer: ChatServer) {
     private val ratingKeywords = mutableListOf(negativeKeywords, neutralKeywords, positiveKeywords)
     private var ratingKeywordUsers = mutableListOf<String>()
     private val ratingKeywordBAC = BarChart(xAxis, yAxis).apply {
-        title = "Verwendete Wertungswörter pro Benutzer"
+        title = "Wertungswörter pro Benutzer"
+        stylesheets.add("/styles.css")
     }
 
     var initiate = true
