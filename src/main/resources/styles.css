@@ -1,0 +1,4 @@
+/*Hier wird die Breite der Legende "Wertungswörter pro Benutzer" manuell angepasst */
+.chart-legend {
+    -fx-pref-width: 210;
+}
