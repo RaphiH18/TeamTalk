@@ -43,49 +43,117 @@ class ServerStatistic(private val server: ChatServer) {
         "eigentlich" to 0.0
     )
 
-    private var ratingKeywordChartData = listOf(
+    /*private var ratingKeywordChartData = listOf(
         XYChart.Series<String, Number>(),
         XYChart.Series<String, Number>(),
         XYChart.Series<String, Number>()
-    )
+    ).apply {
+        this[0].name = "Postiv"
+        this[1].name = "Neutral"
+        this[2].name = "Negativ"
+    }*/
 
-    private val RATING_KEYWORDS = listOf(
-        mutableMapOf<String, Double>(
-            "gut" to 0.0,
-            "ja" to 0.0,
-            "super" to 0.0,
-            "perfekt" to 0.0,
-            "optimal" to 0.0,
-            "prima" to 0.0
-        ),
-        mutableMapOf<String, Double>(
-            "schlecht" to 0.0,
-            "nein" to 0.0,
-            "schade" to 0.0
-        ),
-        mutableMapOf<String, Double>(
-            "ok" to 0.0,
-            "einverstanden" to 0.0,
-            "passt" to 0.0
+    fun RatingKeywordGenerator(): List<MutableMap<String, Number>> {
+        val keywords = listOf(
+            mutableMapOf<String, Number>(
+                "gut" to 0,
+                "ja" to 0,
+                "super" to 0,
+                "perfekt" to 0,
+                "optimal" to 0,
+                "prima" to 0
+            ),
+            mutableMapOf<String, Number>(
+                "schlecht" to 0,
+                "nein" to 0,
+                "schade" to 0
+            ),
+            mutableMapOf<String, Number>(
+                "ok" to 0,
+                "einverstanden" to 0,
+                "passt" to 0
+            )
         )
-    )
+        return keywords
+    }
+
+    private var RATING_KEYWORDS = mutableListOf<Pair<String, List<MutableMap<String, Number>>>>()
+
+    fun ratingKeywordChartDataGenerator(name: String): Pair<String, List<XYChart.Series<String, Number>>> {
+        val newDataList = Pair<String, List<XYChart.Series<String, Number>>>(
+            name,
+            listOf(
+                XYChart.Series<String, Number>(),
+                XYChart.Series<String, Number>(),
+                XYChart.Series<String, Number>()
+            )
+        )
+        return newDataList
+    }
+
+    private var ratingKeywordChartData = mutableListOf<Pair<String, List<XYChart.Series<String, Number>>>>()
+
+    /*    private var ratingKeywordChartData = listOf(
+            Pair<String, List<XYChart.Series<String, Number>>>(
+                "",
+                listOf<XYChart.Series<String, Number>>(
+                    XYChart.Series<String, Number>(),
+                    XYChart.Series<String, Number>(),
+                    XYChart.Series<String, Number>()
+                )
+            )
+        )*/
+
+    /*
+XYChart.Series<String, Number>(),
+XYChart.Series<String, Number>(),
+XYChart.Series<String, Number>()
+).apply {
+this[0].name = "Postiv"
+this[1].name = "Neutral"
+this[2].name = "Negativ"
+*/
+    /*private val RATING_KEYWORDS = listOf(
+        mutableMapOf<String, Number>(
+            "gut" to 0,
+            "ja" to 0,
+            "super" to 0,
+            "perfekt" to 0,
+            "optimal" to 0,
+            "prima" to 0
+        ),
+        mutableMapOf<String, Number>(
+            "schlecht" to 0,
+            "nein" to 0,
+            "schade" to 0
+        ),
+        mutableMapOf<String, Number>(
+            "ok" to 0,
+            "einverstanden" to 0,
+            "passt" to 0
+        )
+    )*/
 
     fun start() {
+
         var message: Message
         var formattedMessage: String
+        var senderName: String
         handlerScope.launch {
             while (true) {
                 while (newMessages.isNotEmpty()) {
                     message = newMessages.removeFirst()
                     formattedMessage = message.getMessage().toString().lowercase()
+                    senderName = message.getSenderName()
                     getFillWordUsage(formattedMessage)
-                    getTriggerWordUsage(formattedMessage)
+                    getTriggerWordUsage(formattedMessage, senderName)
                     // Hier kommen alle Analysemethoden hin...
 
                     //
                     processedMessages.add(message)
                 }
-                server.getGUI().updateCharts(fillkeywordChartData, ratingKeywordChartData)
+                server.getGUI().updateCharts(fillkeywordChartData ,ratingKeywordChartData)
+                //server.getGUI().updateCharts(fillkeywordChartData, ratingKeywordChartData)
                 delay(5000)
             }
         }
@@ -179,24 +247,84 @@ class ServerStatistic(private val server: ChatServer) {
         }
     }
 
-    fun getTriggerWordUsage(message: String) {
+    fun getTriggerWordUsage(message: String, sender: String) {
         val trimmer = Regex("\\s+")
         val words = message.split(trimmer)
-        for (word in words) {
-            for (i in 0..2) {
-                println("i: " + i)
-                if (RATING_KEYWORDS[i].contains(word)) {
-                    RATING_KEYWORDS[i][word] = (RATING_KEYWORDS[i][word]!!) + 1
-                    break
+
+        if (RATING_KEYWORDS.any { it.first == sender }.not()) {
+            RATING_KEYWORDS.add(Pair(sender, RatingKeywordGenerator()))
+            ratingKeywordChartData.add(ratingKeywordChartDataGenerator(sender))
+        }
+        if (RATING_KEYWORDS.any { it.first == sender }) {
+            val senderIndex = RATING_KEYWORDS.indexOfFirst { it.first == sender }
+            for (word in words) {
+                for (i in 0..2) {
+                    if (RATING_KEYWORDS[senderIndex].second[i].contains(word)) {
+                        RATING_KEYWORDS[senderIndex].second[i][word] =
+                            (RATING_KEYWORDS[senderIndex].second[i][word]!!).toLong() + 1
+                        println("Neuer Wert: " + RATING_KEYWORDS[senderIndex])
+                        break
+                    }
                 }
             }
+            val senderIndexChartData = ratingKeywordChartData.indexOfFirst { it.first == sender }
+            for (i in 0..2) {
+                ratingKeywordChartData[senderIndexChartData].second[i].data.clear()
+            }
+            for (i in 0..2) {
+                for (senderData in RATING_KEYWORDS[senderIndex].second[i]) {
+                    if (senderData.value.toLong() > 0) {
+                        val dataFormatter = XYChart.Data(senderData.key, senderData.value)
+                        ratingKeywordChartData[senderIndexChartData].second[i].data.add(dataFormatter)
+                        //println("Applied ChartData: " + dataFormatter)
+                        //println("NewChartData: " + ratingKeywordChartData[senderIndexChartData].second[i].data)
+                    }
+                }
+            }
+            /*
+            println("RatingkeywordChartData: " + ratingKeywordChartData)
+            println("RatingkeywordChartData_GUT: " + ratingKeywordChartData[senderIndexChartData].second[0].data)
+            println("RatingkeywordChartData_NEUTRAL: " + ratingKeywordChartData[senderIndexChartData].second[1].data)
+            println("RatingkeywordChartData_NEGATIV: " + ratingKeywordChartData[senderIndexChartData].second[2].data)
+            */
         }
-        /*for (i in 0..2) {
-            for (data in RATING_KEYWORDS[i]) {
-                ratingKeywordChartData[i].
+    }
+
+
+    /*
+          //println("1 Ratings: $RATING_KEYWORDS")
+          for (i in 0..2) {
+              for (rating in RATING_KEYWORDS[i]) {
+                  if(rating.value.toLong() > 0){
+                      println("Ratings: $rating")
+                      val formatRating = XYChart.Data(rating.key, rating.value)
+                      ratingKeywordChartData[i].data.add(formatRating)
+                  }
+              }
+          }
+}*/
+
+/*fun getTriggerWordUsage(message: String) {
+    val trimmer = Regex("\\s+")
+    val words = message.split(trimmer)
+    for (word in words) {
+        for (i in 0..2) {
+            //println("i: " + i)
+            if (RATING_KEYWORDS[i].contains(word)) {
+                RATING_KEYWORDS[i][word] = (RATING_KEYWORDS[i][word]!!).toLong() + 1
+                break
             }
         }
-        ratingKeywordChartData[0]
-        */
     }
+    //println("1 Ratings: $RATING_KEYWORDS")
+    for (i in 0..2) {
+        for (rating in RATING_KEYWORDS[i]) {
+            if(rating.value.toLong() > 0){
+                println("Ratings: $rating")
+                val formatRating = XYChart.Data(rating.key, rating.value)
+                ratingKeywordChartData[i].data.add(formatRating)
+            }
+        }
+    }
+}*/
 }

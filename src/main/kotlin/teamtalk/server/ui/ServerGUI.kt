@@ -1,6 +1,8 @@
 package teamtalk.server.ui
 
+import javafx.application.Platform
 import javafx.collections.FXCollections
+import javafx.collections.ObservableArray
 import javafx.collections.ObservableList
 import javafx.geometry.Insets
 import javafx.geometry.Pos
@@ -10,13 +12,11 @@ import javafx.scene.control.*
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
-import javafx.scene.paint.Color.BLACK
-import javafx.scene.paint.Color.GREEN
+import javafx.scene.paint.Color
+import javafx.scene.paint.Color.*
 import javafx.scene.shape.Circle
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.javafx.JavaFx
-import kotlinx.coroutines.launch
 import teamtalk.logger
 import teamtalk.server.handler.ChatServer
 
@@ -50,31 +50,275 @@ class ServerGUI(private val chatServer: ChatServer) {
         title = "Verwendete Füllwörter insgesamt"
     }
 
-    private val xAxis = CategoryAxis()
-    private val yAxis = NumberAxis()
-    private val ratingKeywordData = XYChart.Series<String, Number>()
-    private val ratingKeywordBAC = BarChart(xAxis, yAxis).apply {
-        title = "Verwendete Wertungswörter insgesamt"
+    private val xAxis = CategoryAxis().apply {
+        categories = FXCollections.observableArrayList("")
+        //categories = FXCollections.observableArrayList("Positiv", "Neutral", "Negativ")
+        label = "Benutzer"
     }
+    private val yAxis = NumberAxis().apply {
+        label = "Anzahl"
+    }
+    /*private val positiveKeywords = XYChart.Series<String, Number>()
+    private val neutralKeywords = XYChart.Series<String, Number>()
+    private val negativeKeywords = XYChart.Series<String, Number>()
+    */
+
+    private val positiveKeywords = XYChart.Series<String, Number>().apply {
+        name = "Positiv"
+    }
+    private val neutralKeywords = XYChart.Series<String, Number>().apply {
+        name = "Neutral"
+    }
+    private val negativeKeywords = XYChart.Series<String, Number>().apply {
+        name = "Negativ"
+    }
+
+    private val ratingKeywords = mutableListOf(positiveKeywords, neutralKeywords, negativeKeywords)
+    //private lateinit var ratingKeywords: MutableList<List<XYChart<String, Number>>>
+
+
+    //private val ratingKeywordData = XYChart.Series<String, Number>()
+    private lateinit var ratingKeywordData: MutableList<XYChart.Series<String, Double>>
+    private val ratingKeywordBAC = BarChart(xAxis, yAxis).apply {
+        title = "Verwendete Wertungswörter pro Benutzer"
+    }
+
+    private var ratingKeywordUsers = mutableListOf<String>()
+//    private var ratingKeywordUsers = listOf("Benutzer1", "Benutzer2", "Benutzer3")
+
 
     var initiate = true
 
-    fun updateCharts(fillKeywordChartData: ObservableList<PieChart.Data>, ratingKeywordChartData: List<XYChart.Series<String, Number>>) {
+    fun updateCharts(
+        fillKeywordChartData: ObservableList<PieChart.Data>,
+        ratingKeywordChartData: MutableList<Pair<String, List<XYChart.Series<String, Number>>>>
+    ) {
+
         if (initiate) {
             initiate = false
             guiScope.launch {
                 fillKeywordPIC.data = pieChartData
+                ratingKeywordBAC.data.addAll(ratingKeywords)
             }
+
         }
 
         updateFillKeywordChart(fillKeywordChartData)
-        println("TESTING" + ratingKeywordChartData)
-        //updateRatingKeywordChart(ratingKeywordChartData)
+        sortRatingKeywordChart(ratingKeywordChartData)
     }
 
-    fun updateRatingKeywordChart(RatingKeywordChartData: XYChart.Series<String, Number>){
-        println("Test")
+    /*fun updateRatingKeywordChart(
+        filteredRatingKeywordChartData: ObservableList<XYChart.Data<String, Number>>,
+        filterNumber: Int
+    ) {
+        var newRatingKeyword = true
+        for (inputRating in filteredRatingKeywordChartData) {
+            for (currentRating in ratingKeywords[filterNumber].data) {
+                println("InputRating: X" + inputRating.xValue)
+                println("InputRating: Y" + inputRating.yValue)
+                println("CurrentRating X: " + currentRating.xValue)
+                println("CurrentRating Y: " + currentRating.yValue)
+                if (currentRating.xValue == inputRating.xValue) {
+                    newRatingKeyword = false
+                    if (currentRating.yValue.toLong() < inputRating.yValue.toLong()) {
+                        println("New Input Value is hiher")
+                        currentRating.yValue = inputRating.yValue
+                        guiScope.launch {
+                            ratingKeywordBAC.layout()
+                        }
+
+                    }
+                    break
+                }
+            }
+            if (newRatingKeyword) {
+                println("Neuer Keyword: " + inputRating)
+                guiScope.launch {
+                    ratingKeywords[filterNumber].data.add(inputRating)
+                }
+            }
+        }
+    }*/
+
+    //fun sortRatingKeywordChart(ratingKeywordChartData: List<XYChart.Series<String, Number>>) {
+    /*fun sortRatingKeywordChart(ratingKeywordChartData: MutableList<Pair<String, List<XYChart.Series<String, Number>>>>) {
+        for (i in 0..2) {
+            when (i) {
+                0 -> {
+                    updateRatingKeywordChart(ratingKeywordChartData[i].data, i)
+                }
+
+                1 -> {
+                    updateRatingKeywordChart(ratingKeywordChartData[i].data, i)
+                }
+
+                2 -> {
+                    updateRatingKeywordChart(ratingKeywordChartData[i].data, i)
+                }
+            }
+        }
+    }*/
+
+    fun createXYCData(username: String) {
+        guiScope.launch {
+            positiveKeywords.data.add(XYChart.Data<String, Number>(username, 0))
+            neutralKeywords.data.add(XYChart.Data<String, Number>(username, 0))
+            negativeKeywords.data.add(XYChart.Data<String, Number>(username, 0))
+        }
     }
+    fun sortRatingKeywordChart(ratingKeywordChartData: MutableList<Pair<String, List<XYChart.Series<String, Number>>>>) {
+        for (inputData in ratingKeywordChartData) {
+            val currentExistingUser = inputData.first
+            println("Suchender Benutzer" + currentExistingUser)
+            if (ratingKeywordUsers.contains(currentExistingUser).not()) {
+                ratingKeywordUsers.addLast(currentExistingUser)
+                val tempList: MutableList<String> = mutableListOf()
+                for (user in ratingKeywordUsers) {
+                    tempList.add(user)
+                }
+                createXYCData(currentExistingUser)
+
+                guiScope.launch {
+                    xAxis.categories.setAll(FXCollections.observableArrayList(tempList))
+                }
+            }
+            if (ratingKeywordUsers.contains(inputData.first)) {
+                println("Der Benuzter existiert: ${currentExistingUser}")
+                val existingUserIndex = ratingKeywordUsers.indexOf(currentExistingUser)
+                println("Mit Index: " + existingUserIndex)
+                val newUserIndex = ratingKeywordChartData[0].first.indexOf(inputData.first)
+                println("Der neue Benuzter: " + ratingKeywordChartData[0].first)
+                println("Mit Index : " + newUserIndex)
+                for (i in 0..2) {
+                    when (i) {
+                        0 -> {
+                            var tempDataCounter = 0
+                            for (value in inputData.second[i].data) {
+                                println("VALUE0: " + value)
+                                tempDataCounter += value.yValue.toInt()
+                            }
+                            for (user in positiveKeywords.data){
+                                if(user.xValue == currentExistingUser) {
+                                    guiScope.launch {
+                                        user.yValue = tempDataCounter
+                                        }
+                                    }
+                                }
+                        }
+                        1 -> {
+                            var tempDataCounter = 0
+                            for (value in inputData.second[i].data) {
+                                println("VALUE1: " + value)
+                                tempDataCounter += value.yValue.toInt()
+                            }
+                            for (user in neutralKeywords.data){
+                                if(user.xValue == currentExistingUser) {
+                                    guiScope.launch {
+                                        user.yValue = tempDataCounter
+                                    }
+                                }
+                            }
+                        }
+                        2 -> {
+                            var tempDataCounter = 0
+                            for (value in inputData.second[i].data) {
+                                println("VALUE2: " + value)
+                                tempDataCounter += value.yValue.toInt()
+                            }
+                            for (user in negativeKeywords.data){
+                                if(user.xValue == currentExistingUser) {
+                                    guiScope.launch {
+                                        user.yValue = tempDataCounter
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                /*
+                for (i in 0..2) {
+                    when (i) {
+                        0 -> {
+                                println("test")
+                            }
+                        }
+
+                        1 -> {
+                            var tempCounter = 0
+                            for (value in ratingKeywords[ratingKeywordChartData.indexOfFirst { it.first == inputData.first }].data) {
+                                println("1 " + value)
+                            }
+                        }
+
+                        2 -> {
+                            var tempCounter = 0
+                            for (value in ratingKeywords[ratingKeywordChartData.indexOfFirst { it.first == inputData.first }].data) {
+                                println("2 " + value)
+                            }
+                        }
+                    }
+                }*/
+            }
+        }
+    }
+    /*fun updateRatingKeywordChart(ratingKeywordChartData: List<XYChart.Series<String, Number>>) {
+        for (i in 0..2) {
+            when (i) {
+                0 -> {
+                    var newRating = true
+                    for (currentValue in positiveKeywords.data) {
+                        //println("CURRENTVALUE" + currentValue)
+                        //println("NEWVALUE" + ratingKeywordChartData[i].data)
+                        for (newValue in ratingKeywordChartData[i].data) {
+                            println("NEWVALUE" + newValue)
+                            println("CURRENTVALUE" + currentValue)
+                            if (currentValue.xValue == newValue.toString()) {
+                                println("currentDataValue: " + currentValue.yValue.toLong())
+                                println("newDataValue: " + newValue.yValue.toLong())
+                                if (currentValue.yValue.toLong() < newValue.yValue.toLong()) {
+                                    currentValue.yValue == newValue.yValue
+                                }
+                                newRating = false
+                                break
+                            }
+                        }
+
+                    }
+                    /*if (newRating) {
+                        guiScope.launch {
+                            positiveKeywords.data.add(XYChart.Data(element.xValue, element.yValue))
+                        }
+                    }*/
+                    for (element in ratingKeywordChartData[i].data) {
+                        //println("ELEMENT: " + element)
+                        //println(element.xValue)
+                        //println(element.yValue)
+                        guiScope.launch {
+                            positiveKeywords.data.add(XYChart.Data(element.xValue, element.yValue))
+                        }
+                    }
+                }
+
+                1 -> {
+                    for (element in ratingKeywordChartData[i].data) {
+                        guiScope.launch {
+                            neutralKeywords.data.add(XYChart.Data(element.xValue, element.yValue))
+                        }
+                    }
+                }
+
+                2 -> {
+                    for (element in ratingKeywordChartData[i].data) {
+                        guiScope.launch {
+                            negativeKeywords.data.add(XYChart.Data(element.xValue, element.yValue))
+                        }
+                    }
+                }
+            }
+        }
+
+    }*/
+
     fun updateFillKeywordChart(FillKeywordChartData: ObservableList<PieChart.Data>) {
         for (tempData in FillKeywordChartData) {
             var newData = true
