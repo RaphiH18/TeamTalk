@@ -1,30 +1,36 @@
 package teamtalk.server.handler
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import org.json.JSONObject
 import teamtalk.message.TextMessage
 import teamtalk.jsonUtil
 import teamtalk.logger.debug
 import teamtalk.logger.log
+import teamtalk.server.handler.network.ServerClient
+import teamtalk.server.handler.network.ServerHeader
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.SocketException
 import java.time.Instant
 
-class ServerHandler(private val server: ChatServer) {
+class ServerHandler(private val chatServer: ChatServer) {
+
+    //  CoroutineScope für Netzwerk und IO-Operationen
+    private val handlerScope = CoroutineScope(Dispatchers.IO)
 
     private lateinit var serverSocket: ServerSocket
-    private val handlerScope = CoroutineScope(Dispatchers.IO)
-    private var serverState = false
+    private var isRunning = false
+        set(value) {
+            field = value
+            chatServer.getGUI().updateStatus(value)
+        }
 
     fun start() {
         handlerScope.launch {
-            println("handler: ${Dispatchers.IO.toString()}")
-            serverSocket = ServerSocket(server.getPort(), 20, InetAddress.getByName(server.getIP()))
-            log("Der Server wurde gestartet (IP: ${server.getIP()}, Port: ${server.getPort()})")
-            serverState = true
+            serverSocket = ServerSocket(chatServer.getPort(), 20, InetAddress.getByName(chatServer.getIP()))
+            log("Der Server wurde gestartet (IP: ${chatServer.getIP()}, Port: ${chatServer.getPort()})")
+            isRunning = true
+            chatServer.getGUI().startRuntimeClock()
             while (true) {
                 try {
                     val socket = serverSocket.accept()
@@ -32,7 +38,6 @@ class ServerHandler(private val server: ChatServer) {
 
                     launch {
                         val serverClient = ServerClient(socket)
-                        server.getClients().add(serverClient)
 
                         while (socket.isConnected) {
                             process(serverClient)
@@ -40,7 +45,7 @@ class ServerHandler(private val server: ChatServer) {
                     }
                 } catch (e: SocketException) {
                     log("Der Server wurde beendet (Socket closed).")
-                    serverState = false
+                    isRunning = false
                     break
                 }
             }
@@ -67,11 +72,17 @@ class ServerHandler(private val server: ChatServer) {
                 }
 
                 "LOGIN" -> {
-                    serverClient.setUsername(headerJSON.get("username").toString())
-                    serverClient.setLoginTime(Instant.now())
-                    log("Verbindung zwischen (${serverClient.getUsername()}) und dem Server erfolgreich aufgebaut.")
+                    val username = headerJSON.get("username").toString()
+                    val user = chatServer.getUser(username)
 
-                    broadcast(ServerHeader.STATUS_UPDATE.toJSON(this))
+                    if (user != null) {
+                        user.login(serverClient)
+                        log("Login erfolgreich: (${user.getName()}) hat sich eingeloggt.")
+                        broadcast(ServerHeader.STATUS_UPDATE.toJSON(this))
+                    } else {
+                        serverClient.send(ServerHeader.LOGIN_RESPONSE.toJSON(this, "USER_NOT_EXISTS"))
+                        debug("Login fehlgeschlagen: $username existiert nicht.")
+                    }
                 }
 
                 "MESSAGE" -> {
@@ -79,71 +90,50 @@ class ServerHandler(private val server: ChatServer) {
                     serverClient.getInput().readFully(messageBytes)
                     val messageText = String(messageBytes, Charsets.UTF_8)
 
-                    val receiverClient = server.getClients().find { it.getUsername() == headerJSON.getString("receiverName") }
+                    val senderName = headerJSON.getString("senderName")
+                    val receiverName = headerJSON.getString("receiverName")
 
-                    if (receiverClient != null) {
-                        receiverClient.send(headerJSON, messageBytes)
+                    val receiverUser = chatServer.getUser(receiverName)
 
-                        serverClient.send(
-                            ServerHeader.MESSAGE_RESPONSE.toJSON(
-                                this, "FORWARDED", receiverClient.getUsername(), serverClient.getUsername(),
-                                messageBytes.size
-                            ),
-                            messageBytes
-                        )
+                    if (receiverUser != null) {
+                        if (receiverUser.isOnline()) {
+                            receiverUser.getClient().send(headerJSON, messageBytes)
 
-                        val message = TextMessage(serverClient.getUsername(), receiverClient.getUsername(), Instant.now(), messageText)
-                        server.getStats().newMessages.add(message)
-                    } else {
-                        serverClient.send(
-                            ServerHeader.MESSAGE_RESPONSE.toJSON(
-                                this,
-                                "USER_OFFLINE",
-                                headerJSON.getString("receiverName"),
-                                serverClient.getUsername(),
-                                messageBytes.size
+                            serverClient.send(
+                                ServerHeader.MESSAGE_RESPONSE.toJSON(this, "FORWARDED", receiverName, senderName, messageBytes.size),
+                                messageBytes
                             )
-                        )
+
+                            val message = TextMessage(senderName, receiverName, Instant.now(), messageText)
+                            chatServer.getStats().newMessages.add(message)
+                        }
+                    } else {
+                        serverClient.send(ServerHeader.MESSAGE_RESPONSE.toJSON(this, "USER_NOT_EXISTS", receiverName, senderName, messageBytes.size))
                     }
                 }
 
                 "FILE" -> {
-                    val receiverClient = server.getClients().find { it.getUsername() == headerJSON.getString("receiverName") }
+                    val senderName = headerJSON.getString("senderName")
+                    val receiverName = headerJSON.getString("receiverName")
 
-                    if (receiverClient != null) {
-                        println("File wird weitergeleitet!")
-                        receiverClient.sendHeader(headerJSON)
+                    val receiverUser = chatServer.getUser(receiverName)
 
-                        val fileChunkBytes = ByteArray(4 * 1024)
-//                        var amountBytesRead = 0
-//                        while (true) {
-//                            println("Bytes forwarded: $amountBytesRead")
-//                            amountBytesRead = serverClient.getInput().read(fileChunkBytes.copyOf(amountBytesRead))
-//
-//                            if (amountBytesRead == -1) {
-//                                break
-//                            }
-//                            receiverClient.sendPayload(fileChunkBytes)
-//                        }
+                    if (receiverUser != null) {
+                        if (receiverUser.isOnline()) {
+                            receiverUser.getClient().sendHeader(headerJSON)
 
-                        var bytesReadTotal = 0
-                        while(bytesReadTotal < payloadSize) {
-                            val bytesRead = serverClient.getInput().read(fileChunkBytes)
-                            bytesReadTotal += bytesRead
-                            debug("<- Von Server erhalten: Nur Daten, eingelesen: $bytesRead")
-                            receiverClient.sendPayload(fileChunkBytes.copyOf(bytesRead))
+                            val fileChunkBytes = ByteArray(4 * 1024)
+
+                            var bytesReadTotal = 0
+                            while (bytesReadTotal < payloadSize) {
+                                val bytesRead = serverClient.getInput().read(fileChunkBytes)
+                                bytesReadTotal += bytesRead
+                                debug("<- Von Server erhalten: Nur Daten, eingelesen: $bytesRead")
+                                receiverUser.getClient().sendPayload(fileChunkBytes.copyOf(bytesRead))
+                            }
                         }
-                        println("Alles gesendet!")
                     } else {
-                        serverClient.send(
-                            ServerHeader.MESSAGE_RESPONSE.toJSON(
-                                this,
-                                "USER_OFFLINE",
-                                headerJSON.getString("receiverName"),
-                                serverClient.getUsername(),
-                                headerJSON.getInt("payloadSize")
-                            )
-                        )
+                        serverClient.send(ServerHeader.MESSAGE_RESPONSE.toJSON(this, "USER_NOT_EXISTS", receiverName, senderName, headerJSON.getInt("payloadSize")))
                     }
                 }
 
@@ -157,30 +147,33 @@ class ServerHandler(private val server: ChatServer) {
     }
 
     private fun broadcast(header: JSONObject, payloadBytes: ByteArray = byteArrayOf()) {
-        for (serverClient in server.getClients()) {
+        for (serverClient in chatServer.getClients()) {
             serverClient.send(header, payloadBytes)
         }
     }
 
     fun stop() {
-        for (client in server.getClients()) {
-            try {
-                client.getInput().close()
-                client.getOutput().close()
-                client.getSocket().close()
-            } catch (e: Exception) {
-                log("Fehler beim Schliessen der Client-Verbindung: ${e.message}")
+        for (user in chatServer.getUsers()) {
+            if (user.isOnline()) {
+                try {
+                    user.getClient().getInput().close()
+                    user.getClient().getOutput().close()
+                    user.getClient().getSocket().close()
+                } catch (e: Exception) {
+                    log("Fehler beim Schliessen der Client-Verbindung: ${e.message}")
+                }
             }
         }
 
         try {
             serverSocket.close()
+            chatServer.getGUI().stopRuntimeClock()
         } catch (e: Exception) {
             log("Fehler beim Schliessen des ServerSockets: ${e.message}")
         }
     }
 
-    fun getServer() = server
+    fun getServer() = chatServer
 
-    fun isRunning() = serverState
+    fun isRunning() = isRunning
 }

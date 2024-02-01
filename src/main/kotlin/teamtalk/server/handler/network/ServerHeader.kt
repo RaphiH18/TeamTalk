@@ -1,7 +1,8 @@
-package teamtalk.server.handler
+package teamtalk.server.handler.network
 
 import org.json.JSONArray
 import org.json.JSONObject
+import teamtalk.server.handler.ServerHandler
 
 enum class ServerHeader {
 
@@ -20,19 +21,12 @@ enum class ServerHeader {
 
             when(type) {
                 "HELLO_RESPONSE"-> {
-                    put("userList", JSONArray(serverHandler.getServer().getUsers()))
-                    val onlineNames = JSONArray()
-                    for (client in serverHandler.getServer().getClients()) {
-                        if(client.getUsername() != "") {
-                            onlineNames.put(client.getUsername())
-                        }
-                    }
-
-                    put("onlineUserList", onlineNames)
+                    put("userList", JSONArray(serverHandler.getServer().getUserNames()))
+                    put("onlineUserList", JSONArray(serverHandler.getServer().getClientNames()))
                 }
 
                 "LOGIN_RESPONSE" -> {
-                    put("onlineUserList", JSONArray(serverHandler.getServer().getOnlineUsers()))
+                    put("onlineUserList", JSONArray(serverHandler.getServer().getClientNames()))
                 }
 
                 "MESSAGE_RESPONSE" -> {
@@ -41,12 +35,7 @@ enum class ServerHeader {
                 }
 
                 "STATUS_UPDATE" -> {
-                    val onlineNames = JSONArray()
-                    for (client in serverHandler.getServer().getClients()) {
-                        onlineNames.put(client.getUsername())
-                    }
-
-                    put("onlineUserList", onlineNames)
+                    put("onlineUserList", JSONArray(serverHandler.getServer().getClientNames()))
                 }
             }
         }

@@ -1,18 +1,25 @@
 package teamtalk.server.handler
 
+import teamtalk.server.handler.network.ServerClient
+import teamtalk.server.stats.StatisticHandler
 import teamtalk.server.ui.ServerGUI
-import java.net.InetAddress
 
 class ChatServer(port: Int) {
 
+    private val users = mutableListOf<ServerUser>()
+
     private val handler = ServerHandler(this)
+    private val stats = StatisticHandler(this)
     private val gui = ServerGUI(this)
-    private val stats = ServerStatistic(this)
 
     private var IP = "127.0.0.1"
     private var PORT = port
 
-    private val clients = mutableListOf<ServerClient>()
+    init {
+        addUser("Raphael Hegi")
+        addUser("Lukas Ledergerber")
+        addUser("Yannick Meier")
+    }
 
     fun start() {
         handler.start()
@@ -39,16 +46,46 @@ class ChatServer(port: Int) {
 
     fun getStats() = stats
 
-    fun getClients() = clients
+    fun getUsers() = users
 
-    fun getUsers() = mutableListOf("Raphael Hegi", "Lukas Ledergerber", "Yannick Meier", "Budei Babdei", "Sone Anderi Person")
+    fun getUser(username: String) = users.firstOrNull { it.getName() == username }
 
-    fun getOnlineUsers(): MutableList<String> {
-        val onlineUsers = mutableListOf<String>()
+    fun addUser(username: String) {
+        users.add(ServerUser(username))
+        gui.updateUserList()
+    }
 
-        for (client in clients) {
-            onlineUsers.add(client.getUsername())
+    fun getClients(): List<ServerClient> {
+        val clients = mutableListOf<ServerClient>()
+
+        for (user in users) {
+            if (user.isOnline()) {
+                clients.add(user.getClient())
+            }
         }
-        return onlineUsers
+
+        return clients.toList()
+    }
+
+    fun getClientNames(): List<String> {
+        val names = mutableListOf<String>()
+
+        for (user in users) {
+            if (user.isOnline()) {
+                names.add(user.getName())
+            }
+        }
+
+        return names.toList()
+    }
+
+    fun getUserNames(): List<String> {
+        val names = mutableListOf<String>()
+
+        for (user in users) {
+            names.add(user.getName())
+        }
+
+        return names
     }
 }

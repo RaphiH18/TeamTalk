@@ -14,7 +14,7 @@ class ServerApp : Application() {
         val chatServer = ChatServer(4444)
 
         with(stage) {
-            scene = Scene(chatServer.getGUI().createBaseView()).apply {
+            scene = Scene(chatServer.getGUI().create()).apply {
                 minWidth = chatServer.getGUI().MIN_WIDTH
                 minHeight = chatServer.getGUI().MIN_HEIGHT
             }

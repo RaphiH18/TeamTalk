@@ -1,12 +1,10 @@
 package teamtalk.server.ui
 
-import javafx.collections.FXCollections
-import javafx.collections.ObservableList
 import javafx.geometry.Insets
 import javafx.geometry.Pos
 import javafx.scene.Node
-import javafx.scene.chart.*
 import javafx.scene.control.*
+import javafx.scene.layout.GridPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
@@ -16,334 +14,210 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.javafx.JavaFx
 import teamtalk.logger
 import teamtalk.server.handler.ChatServer
+import teamtalk.server.handler.ServerUser
+import java.time.Duration
+import java.time.Instant
+import kotlin.system.exitProcess
 
 class ServerGUI(private val chatServer: ChatServer) {
 
+    //  CoroutineScope für JavaFX Thread
     val guiScope = CoroutineScope(Dispatchers.JavaFx)
 
+    //  -------- Globale GUI-Variablen/Values --------
     val MIN_WIDTH = 1200.0
     val MIN_HEIGHT = 800.0
 
-    private val currentPortLbl = Label("4444")
-    private val startBTN = Button("Start")
-    private val stopBTN = Button("Stop")
-    private val statusCIR = Circle(4.0)
+    //  Globale Variablen/Values für den "Dashboard"-Tab
+    private val statusCIR = statusCIR()
+    private val currentStateLBL = Label("Der TeamTalk Server ist gestoppt.")
+    private var startBTN = startBTN()
+    private var stopBTN = stopBTN()
+    private val currentPortLBL = Label("4444")
+    private val currentRuntimeLBL = Label("00:00:00")
+    private val totalUsersLBL = Label("0")
+    private val onlineUsersLBL = Label("0")
+    private lateinit var runtimeClock: Job
 
-    val portLbl = Label("Port").apply {
-        padding = Insets(4.0, 45.0, 0.0, 0.0)
-    }
+    //  Globale Variablen/Values für den "Einstellungen"-Tab
     private val portTF = TextField("4444")
     private val ipTF = TextField("127.0.0.1")
+    private val applyBTN = applyBTN()
 
-    val applyBTN = Button("Übernehmen").apply {
-        setOnAction {
-            applySettings()
+    //  Globale Variablen/Values für den "Detaillierte Statistik"-Tab
+    private var selectedStatsVB = selectedStatsVB()
+    private var detailedStatsMB = detailedStatsMB()
+
+    var controlArea = createControlSP()
+
+    fun create(): VBox {
+        return VBox().apply {
+            children.add(createMenuBar())
+            children.add(createContentVB())
         }
     }
 
-    var controlArea = createControlView()
-    private var pieChartData = FXCollections.observableArrayList<PieChart.Data>()
-    private var fillKeywordPIC = PieChart().apply {
-        title = "Verwendete Füllwörter insgesamt"
-    }
+    private fun createMenuBar() = bar(
+        menu(
+            "Datei",
+            item("Schliessen") { exitProcess(0) }
+        )
+    )
 
-    private val xAxis = CategoryAxis().apply {
-        categories = FXCollections.observableArrayList("")
-        label = "Benutzer"
-    }
-    private val yAxis = NumberAxis().apply {
-        label = "Anzahl"
-    }
-
-    private val positiveKeywords = XYChart.Series<String, Number>().apply {
-        name = "Positiv"
-    }
-    private val neutralKeywords = XYChart.Series<String, Number>().apply {
-        name = "Neutral"
-    }
-    private val negativeKeywords = XYChart.Series<String, Number>().apply {
-        name = "Negativ"
-    }
-    private val ratingKeywords = mutableListOf(negativeKeywords, neutralKeywords, positiveKeywords)
-    private var ratingKeywordUsers = mutableListOf<String>()
-    private val ratingKeywordBAC = BarChart(xAxis, yAxis).apply {
-        title = "Wertungswörter pro Benutzer"
-        stylesheets.add("/styles.css")
-    }
-
-    var initiate = true
-
-    fun updateCharts(
-        fillKeywordChartData: ObservableList<PieChart.Data>,
-        ratingKeywordChartData: MutableList<Pair<String, List<XYChart.Series<String, Number>>>>
-    ) {
-
-        if (initiate) {
-            initiate = false
-            guiScope.launch {
-                fillKeywordPIC.data = pieChartData
-                ratingKeywordBAC.data.addAll(ratingKeywords)
-            }
-        }
-        updateFillKeywordChart(fillKeywordChartData)
-        initRatingKeywordChart(ratingKeywordChartData)
-    }
-
-    fun createXYCDatastructure(username: String) {
-        guiScope.launch {
-            negativeKeywords.data.add(XYChart.Data<String, Number>(username, 0))
-            neutralKeywords.data.add(XYChart.Data<String, Number>(username, 0))
-            positiveKeywords.data.add(XYChart.Data<String, Number>(username, 0))
-            ratingKeywordBAC.layout()
-        }
-    }
-
-    fun initRatingKeywordChart(ratingKeywordChartData: MutableList<Pair<String, List<XYChart.Series<String, Number>>>>) {
-        for (inputData in ratingKeywordChartData) {
-            val currentUser = inputData.first
-            if (ratingKeywordUsers.contains(currentUser).not()) {
-                ratingKeywordUsers.add(currentUser)
-                createXYCDatastructure(currentUser)
-                guiScope.launch {
-                    xAxis.categories.setAll(FXCollections.observableArrayList(ratingKeywordUsers))
-                }
-            }
-            if (ratingKeywordUsers.contains(currentUser)) {
-                for (i in 0..2) {
-                    when (i) {
-                        0 -> {
-                            var tempDataCounter = 0
-                            for (value in inputData.second[i].data) {
-                                tempDataCounter += value.yValue.toInt()
-                            }
-                            for (user in positiveKeywords.data) {
-                                if (user.xValue == currentUser) {
-                                    user.yValue = tempDataCounter
-                                    break
-                                }
-                            }
-                        }
-                        1 -> {
-                            var tempDataCounter = 0
-                            for (value in inputData.second[i].data) {
-                                tempDataCounter += value.yValue.toInt()
-                            }
-                            for (user in neutralKeywords.data) {
-                                if (user.xValue == currentUser) {
-                                    user.yValue = tempDataCounter
-                                    break
-                                }
-                            }
-                        }
-
-                        2 -> {
-                            var tempDataCounter = 0
-                            for (value in inputData.second[i].data) {
-                                tempDataCounter += value.yValue.toInt()
-                            }
-                            for (user in negativeKeywords.data) {
-                                if (user.xValue == currentUser) {
-                                    user.yValue = tempDataCounter
-                                    break
-                                }
-                            }
-                        }
-                    }
-                }
-
-            }
-        }
-    }
-
-    fun updateFillKeywordChart(FillKeywordChartData: ObservableList<PieChart.Data>) {
-        for (tempData in FillKeywordChartData) {
-            var newData = true
-            for (data in pieChartData) {
-                if (data.name == tempData.name) {
-                    guiScope.launch {
-                        data.pieValue = tempData.pieValue
-                    }
-                    newData = false
-                    break
-                }
-            }
-            if (newData) {
-                guiScope.launch {
-                    pieChartData.add(tempData)
-                }
-            }
-        }
-    }
-
-    fun createBaseView(): VBox {
-        val vBoxBase = VBox()
-        val vBoxContent = createContentView()
-        val menuBar = createMenuBar()
-
-        with(vBoxBase) {
-            children.add(menuBar)
-            children.add(vBoxContent)
-        }
-
-        return vBoxBase
-    }
-
-    private fun applySettings() {
-        currentPortLbl.text = portTF.text
-        chatServer.setPort(portTF.text.toInt())
-        chatServer.setIP(ipTF.text)
-        logger.log("Einstellungen übernommen - IP: ${ipTF.text}, Port: ${portTF.text}")
-    }
-
-    private fun updateCircle(status: Boolean) {
-        if (status) {
-            statusCIR.fill = GREEN
-        } else {
-            statusCIR.fill = BLACK
-        }
-    }
-
-    private fun createContentView(): VBox {
-        val vBoxContent = VBox().apply {
+    private fun createContentVB(): VBox {
+        return VBox().apply {
             padding = Insets(10.0)
-        }
 
-        with(vBoxContent) {
             children.add(controlArea)
             children.add(logger.createServerView())
-        }
 
-        VBox.setVgrow(vBoxContent, Priority.ALWAYS)
-        return vBoxContent
+            VBox.setVgrow(this, Priority.ALWAYS)
+        }
     }
 
-    private fun createControlView(): SplitPane {
-        controlArea = SplitPane()
-        with(controlArea) {
+    private fun createControlSP(): SplitPane {
+        return SplitPane().apply {
             minHeight = 550.0
-            items.add(createHandlerArea())
-            items.add(createStatsArea())
-        }
+            items.add(createControlTbPn())
+            items.add(createStatisticTbPn())
+            VBox.setVgrow(this, Priority.ALWAYS)
 
-        VBox.setVgrow(controlArea, Priority.ALWAYS)
-        return controlArea
+            controlArea = this
+        }
     }
 
-    private fun createHandlerArea(): Node {
-        val handlerTabPane = TabPane().apply {
+    private fun createControlTbPn(): TabPane {
+        val controlTP = TabPane().apply {
             stopBTN.isDisable = true
 
-            val dashboard = VBox()
-            dashboard.children.add(HBox().apply {
-                children.add(statusCIR)
-                children.add(Label("Server"))
-                children.add(currentPortLbl)
-                children.add(startBTN.also {
-                    it.setOnAction {
-                        chatServer.start()
-                        startBTN.isDisable = true
-                        stopBTN.isDisable = false
-                        applyBTN.isDisable = true
-                        updateCircle(true)
-                    }
-                })
-                children.add(stopBTN.also {
-                    it.setOnAction {
-                        chatServer.stop()
-                        stopBTN.isDisable = true
-                        startBTN.isDisable = false
-                        applyBTN.isDisable = false
-                        updateCircle(false)
-                    }
-                })
-                padding = Insets(10.0)
-                spacing = 10.0
-                alignment = Pos.CENTER_LEFT
-            })
-
             with(tabs) {
-                add(Tab("Dashboard").apply {
-                    isClosable = false
-                    content = dashboard
-                })
-
-                val ipLbl = Label("IP-Adresse").apply {
-                    padding = Insets(4.0, 10.0, 0.0, 0.0)
-                }
-
-                val settingPortHb = HBox().apply {
-                    with(children) {
-                        add(portLbl)
-                        add(portTF)
-                    }
-                }
-
-                val settingIPHb = HBox().apply {
-                    with(children) {
-                        add(ipLbl)
-                        add(ipTF)
-                    }
-                }
-
-                val settingVb = VBox().apply {
-                    with(children) {
-                        add(settingPortHb)
-                        add(settingIPHb)
-                        add(applyBTN)
-                        padding = Insets(10.0)
-                        spacing = 10.0
-                    }
-                }
-
-                add(Tab("Einstellungen").apply {
-                    isClosable = false
-                    content = settingVb
-                    /*
-                    TODO: Settings im GUI verfügbar machen
-                     */
-                })
+                add(createDashboardTab())
+                add(createSettingsTab())
             }
         }
 
-        return handlerTabPane
+        return controlTP
     }
 
-    private fun createStatsArea(): Node {
-        val globalLeftVB = VBox().apply {
-            guiScope.launch {
-                children.add(fillKeywordPIC)
-            }
+    private fun createDashboardTab(): Tab {
+        val dashboardVB = VBox()
+        dashboardVB.padding = Insets(10.0)
+        dashboardVB.spacing = 5.0
+
+        dashboardVB.children.add(Label("Start / Stop"))
+        dashboardVB.children.add(Separator())
+
+        dashboardVB.children.add(HBox().apply {
+            children.add(statusCIR)
+            children.add(currentStateLBL)
+            alignment = Pos.CENTER_LEFT
+            spacing = 10.0
+        })
+
+        dashboardVB.children.add(HBox().apply {
+            children.add(startBTN)
+            children.add(stopBTN)
+            alignment = Pos.CENTER_LEFT
+            padding = Insets(5.0, 0.0, 15.0, 20.0)
+            spacing = 15.0
+        })
+
+        dashboardVB.children.add(Label("Übersicht"))
+        dashboardVB.children.add(Separator())
+
+        dashboardVB.children.add(HBox().apply {
+            padding = Insets(0.0, 0.0, 15.0, 20.0)
+            spacing = 15.0
+
+            children.add(VBox().apply {
+                children.add(Label("Port:"))
+                children.add(Label("Laufzeit:"))
+                children.add(Label("Benutzer total:"))
+                children.add(Label("Benutzer online:"))
+            })
+
+            children.add(VBox().apply {
+                children.add(currentPortLBL)
+                children.add(currentRuntimeLBL)
+                children.add(totalUsersLBL)
+                children.add(onlineUsersLBL)
+            })
+        })
+
+        return Tab("Dashboard").apply {
+            content = dashboardVB
+            isClosable = false
         }
-        val globalRightVB = VBox().apply {
+    }
+
+    private fun createSettingsTab(): Tab {
+        val settingsVB = VBox()
+        settingsVB.padding = Insets(10.0)
+        settingsVB.spacing = 5.0
+
+        val networkSettingsGP = GridPane().apply {
+            vgap = 5.0
+            hgap = 10.0
+            add(Label("IP-Adresse:"), 0, 0)
+            add(ipTF, 1, 0)
+            add(Label("Port:"), 0, 1)
+            add(portTF, 1, 1)
         }
-        val globalHB = HBox().apply {
-            with(children) {
-                add(globalLeftVB)
-                add(globalRightVB)
+
+        settingsVB.children.add(Label("Netzwerkkonfiguration"))
+        settingsVB.children.add(Separator())
+        settingsVB.children.add(networkSettingsGP)
+        settingsVB.children.add(applyBTN)
+
+        return Tab("Einstellungen").apply {
+            content = settingsVB
+            isClosable = false
+        }
+    }
+
+    private fun createStatisticTbPn(): Node {
+        val chartsGP = GridPane().apply {
+            val globalCharts = chatServer.getStats().globalCharts
+
+            for (i in 0..(globalCharts.size - 1)) {
+                val columnIndex = i % 2
+                val rowIndex = i / 2
+
+                add(globalCharts[i].getChart(), columnIndex, rowIndex)
             }
         }
 
-        val chartsPAN = TitledPane("Statistiken", globalHB)
-        val overviewPAN = TitledPane("Übersicht", (Label("Inhalt Übersicht")))
+        val statsTiPn = TitledPane("Statistiken", chartsGP).apply {
+            isExpanded = true
+        }
+        val overviewTiPn = TitledPane("Übersicht", (Label("Inhalt Übersicht")))
 
-        val globaleStatsARC = Accordion().apply {
+        val globalStatsARC = Accordion().apply {
             with(panes) {
-                add(chartsPAN)
-                add(overviewPAN)
+                add(statsTiPn)
+                add(overviewTiPn)
             }
         }
 
-        val detailedStatisticVB = VBox().apply{
-            guiScope.launch {
-                children.add(ratingKeywordBAC)
-            }
+        val detailedStatisticVB = VBox().apply {
+            padding = Insets(10.0)
+            spacing = 10.0
+            children.add(HBox().apply {
+                spacing = 10.0
+                alignment = Pos.CENTER_LEFT
+
+                children.add(Label("Statistiken anzeigen für:"))
+                children.add(detailedStatsMB)
+            })
+
+            children.add(selectedStatsVB)
         }
 
         val statsTabPane = TabPane().apply {
             with(tabs) {
                 add(Tab("Globale Statistik").apply {
                     isClosable = false
-                    content = globaleStatsARC
+                    content = globalStatsARC
                 })
                 add(Tab("Detailierte Statistik").apply {
                     isClosable = false
@@ -355,15 +229,156 @@ class ServerGUI(private val chatServer: ChatServer) {
         return statsTabPane
     }
 
-    private fun createMenuBar() = bar(
-        menu(
-            "Datei",
-            item("Schliessen", { System.exit(0) })
-        )
-    )
+    fun updateStatus(status: Boolean) {
+        guiScope.launch {
+            if (status) {
+                statusCIR.fill = GREEN
+                currentStateLBL.text = "Der TeamTalk Server läuft"
+            } else {
+                statusCIR.fill = DARKRED
+                currentStateLBL.text = "Der TeamTalk Server ist gestoppt."
+            }
+        }
+    }
 
+
+    private fun applySettings() {
+        currentPortLBL.text = portTF.text
+        chatServer.setPort(portTF.text.toInt())
+        chatServer.setIP(ipTF.text)
+        logger.log("Einstellungen übernommen - IP: ${ipTF.text}, Port: ${portTF.text}")
+    }
+
+    /*
+    --------------------------------------------------------------------
+
+    Hilfsmethoden für GUI-Kreierung
+
+    --------------------------------------------------------------------
+     */
     private fun bar(vararg elements: Menu) = MenuBar().apply { getMenus().addAll(elements) }
     private fun menu(text: String, vararg elements: MenuItem) = Menu(text).apply { getItems().addAll(elements) }
     private fun item(text: String, method: () -> Unit) = MenuItem(text).apply { setOnAction { method() } }
     private fun separator() = SeparatorMenuItem()
+
+    private fun statusCIR(): Circle {
+        return Circle(5.0).apply {
+            fill = DARKRED
+        }
+    }
+
+    private fun startBTN() : Button {
+        return Button("Start").apply {
+            setOnAction {
+                chatServer.start()
+                startBTN.isDisable = true
+                stopBTN.isDisable = false
+                applyBTN.isDisable = true
+                updateStatus(true)
+            }
+        }
+    }
+
+    private fun stopBTN() : Button {
+        return Button("Stop").apply {
+            isDisable = true
+            setOnAction {
+                chatServer.stop()
+                stopBTN.isDisable = true
+                startBTN.isDisable = false
+                applyBTN.isDisable = false
+                updateStatus(false)
+            }
+        }
+    }
+
+    private fun applyBTN() : Button {
+        return Button("Übernehmen").apply {
+            setOnAction {
+                applySettings()
+            }
+        }
+    }
+
+    private fun selectedStatsVB() = VBox().apply {
+        children.add(Label("Bitte wähle einen Benutzer aus."))
+    }
+
+    private fun statsGP(serverUser: ServerUser) = GridPane().apply {
+        val userCharts = serverUser.getStats().charts
+
+        for (i in 0..(userCharts.size - 1)) {
+            val columnIndex = i % 2
+            val rowIndex = i / 2
+
+            add(userCharts[i].getChart(), columnIndex, rowIndex)
+        }
+    }
+
+    private fun detailedStatsMB(): MenuButton {
+        return MenuButton("Benutzer auswählen").apply {
+            for (user in chatServer.getUserNames()) {
+                items.add(MenuItem(user).apply {
+                    setOnAction {
+                        val selectedUser = chatServer.getUser(this.text)
+
+                        if (selectedUser != null) {
+                            if (selectedUser.isOnline()) {
+                                println("online")
+                                selectedStatsVB.children.clear()
+                                selectedStatsVB.children.add(statsGP(selectedUser))
+                            }
+                        } else {
+                            println("offline")
+                            selectedStatsVB.children.clear()
+                        }
+                    }
+                })
+            }
+        }
+    }
+
+    fun updateUserList() {
+        detailedStatsMB.items.clear()
+
+        for (user in chatServer.getUserNames()) {
+            detailedStatsMB.items.add(MenuItem(user).apply {
+                setOnAction {
+                    println("clickedi click")
+                    val selectedUser = chatServer.getUser(this.text)
+
+                    if (selectedUser != null) {
+                        if (selectedUser.isOnline()) {
+                            selectedStatsVB.children.clear()
+                            selectedStatsVB.children.add(statsGP(selectedUser))
+                        }
+                    } else {
+                        println("offline")
+                        selectedStatsVB.children.clear()
+                    }
+                }
+            })
+        }
+    }
+
+    fun startRuntimeClock() {
+        val startTime: Instant = Instant.now()
+
+        runtimeClock = guiScope.launch {
+            while (isActive) {
+                val duration = Duration.between(startTime, Instant.now())
+
+                currentRuntimeLBL.text = String.format("%02d:%02d:%02d", duration.toHours(), duration.toMinutesPart(), duration.toSecondsPart())
+
+                delay(1000)
+            }
+        }
+    }
+
+    fun stopRuntimeClock() {
+        guiScope.launch {
+            runtimeClock.cancel()
+            currentRuntimeLBL.text = "00:00:00"
+        }
+    }
 }
