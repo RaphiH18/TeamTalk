@@ -15,8 +15,11 @@ import kotlinx.coroutines.javafx.JavaFx
 import teamtalk.logger
 import teamtalk.server.handler.ChatServer
 import teamtalk.server.handler.ServerUser
+import teamtalk.server.stats.charts.SummarizedFillWordsChart
 import java.time.Duration
 import java.time.Instant
+import javax.print.attribute.standard.RequestingUserName
+import kotlin.math.exp
 import kotlin.system.exitProcess
 
 class ServerGUI(private val chatServer: ChatServer) {
@@ -187,12 +190,12 @@ class ServerGUI(private val chatServer: ChatServer) {
             }
         }
 
-        val statsTiPn = TitledPane("Statistiken", chartsGP).apply {
-            isExpanded = true
-        }
+        val statsTiPn = TitledPane("Statistiken", chartsGP)
         val overviewTiPn = TitledPane("Übersicht", (Label("Inhalt Übersicht")))
 
         val globalStatsARC = Accordion().apply {
+            expandedPane = statsTiPn
+
             with(panes) {
                 add(statsTiPn)
                 add(overviewTiPn)
@@ -301,7 +304,7 @@ class ServerGUI(private val chatServer: ChatServer) {
     }
 
     private fun selectedStatsVB() = VBox().apply {
-        children.add(Label("Bitte wähle einen Benutzer aus."))
+        children.add(Label("Bitte wähle eine Ansicht aus."))
     }
 
     private fun statsGP(serverUser: ServerUser) = GridPane().apply {
@@ -317,16 +320,30 @@ class ServerGUI(private val chatServer: ChatServer) {
 
     private fun detailedStatsMB(): MenuButton {
         return MenuButton("Benutzer auswählen").apply {
-            for (user in chatServer.getUserNames()) {
-                items.add(MenuItem(user).apply {
+            val menuButton = this
+
+            items.add(MenuItem("Totalisiert").apply {
+                setOnAction {
+                    selectedStatsVB.children.clear()
+                    selectedStatsVB.children.add(summarizedChartsVB())
+                    menuButton.text = "Totalisiert"
+                }
+            })
+
+
+            for ((index, user) in chatServer.getUserNames().withIndex()) {
+                val buttonText = "Benutzer ${index + 1}"
+
+                items.add(MenuItem(buttonText).apply {
                     setOnAction {
-                        val selectedUser = chatServer.getUser(this.text)
+                        val selectedUser = chatServer.getUser(user)
 
                         if (selectedUser != null) {
                             if (selectedUser.isOnline()) {
                                 println("online")
                                 selectedStatsVB.children.clear()
                                 selectedStatsVB.children.add(statsGP(selectedUser))
+                                menuButton.text = buttonText
                             }
                         } else {
                             println("offline")
@@ -338,26 +355,36 @@ class ServerGUI(private val chatServer: ChatServer) {
         }
     }
 
-    fun updateUserList() {
-        detailedStatsMB.items.clear()
+    private fun summarizedChartsVB(): VBox {
+        return VBox().apply {
+            spacing = 10.0
 
-        for (user in chatServer.getUserNames()) {
-            detailedStatsMB.items.add(MenuItem(user).apply {
-                setOnAction {
-                    println("clickedi click")
-                    val selectedUser = chatServer.getUser(this.text)
+            for(chart in chatServer.getStats().detailedCharts) {
+                children.add(chart.getChart())
+            }
+        }
+    }
 
-                    if (selectedUser != null) {
-                        if (selectedUser.isOnline()) {
-                            selectedStatsVB.children.clear()
-                            selectedStatsVB.children.add(statsGP(selectedUser))
-                        }
-                    } else {
-                        println("offline")
-                        selectedStatsVB.children.clear()
-                    }
+    fun updateUserList(user: ServerUser) {
+        val buttonText = "Benutzer ${user.getIndex() + 1}"
+
+        detailedStatsMB.items.add(MenuItem(buttonText).apply {
+            setOnAction {
+                if (user.isOnline()) {
+                    println("online")
+                    selectedStatsVB.children.clear()
+                    selectedStatsVB.children.add(statsGP(user))
+                    detailedStatsMB.text = buttonText
                 }
-            })
+            }
+        })
+
+        for (chart in chatServer.getStats().detailedCharts) {
+            chart.update()
+        }
+
+        for (chart in user.getStats().charts) {
+            chart.update()
         }
     }
 

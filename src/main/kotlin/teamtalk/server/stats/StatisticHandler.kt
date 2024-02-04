@@ -11,6 +11,7 @@ import teamtalk.server.handler.ChatServer
 import teamtalk.server.handler.ServerUser
 import teamtalk.server.stats.charts.FillWordChart
 import teamtalk.server.stats.charts.StatisticChart
+import teamtalk.server.stats.charts.SummarizedFillWordsChart
 import teamtalk.server.stats.charts.TriggerWordChart
 import kotlin.collections.ArrayDeque
 
@@ -20,17 +21,19 @@ class StatisticHandler(private val chatServer: ChatServer) {
     private val handlerScope = CoroutineScope(Dispatchers.IO)
 
     val newMessages = ArrayDeque(listOf<Message>())
-    val processedMessages = mutableListOf<Message>()
+    private val processedMessages = mutableListOf<Message>()
 
     val globalCharts = mutableListOf<StatisticChart>()
     private val fillWordGlobalChart = FillWordChart()
     private val triggerWordGlobalChart = TriggerWordChart()
 
-    private lateinit var userStatsSelected: ServerUser
+    val detailedCharts = mutableListOf<StatisticChart>()
+    private val summarizedFillWordsChart = SummarizedFillWordsChart(chatServer)
 
     init {
         globalCharts.add(fillWordGlobalChart)
         globalCharts.add(triggerWordGlobalChart)
+        detailedCharts.add(summarizedFillWordsChart)
     }
 
     fun start() {
@@ -48,24 +51,25 @@ class StatisticHandler(private val chatServer: ChatServer) {
     }
 
     private fun process(message: Message) {
+        val senderName = message.getSenderName()
+        val senderUser = chatServer.getUser(senderName)
+
+        val receiverName = message.getReceiverName()
+        val receiverUser = chatServer.getUser(receiverName)
+
+        if (receiverUser != null) {
+            receiverUser.getStats().processMessage(message)
+        }
+
+        if (senderUser != null) {
+            senderUser.getStats().processMessage(message)
+        }
+
         when(message) {
             is TextMessage -> {
                 processGlobalFillWords(message.getMessage())
                 processGlobalTriggerWords(message.getMessage())
-
-                val senderName = message.getSenderName()
-                val senderUser = chatServer.getUser(senderName)
-                val receiverName = message.getSenderName()
-                val receiverUser = chatServer.getUser(receiverName)
-
-                if (senderUser != null) {
-                    senderUser.getStats().sentMessages += 1
-                    senderUser.getStats().processMessage(message.getMessage())
-                }
-
-                if (receiverUser != null) {
-                    receiverUser.getStats().receivedMessages += 1
-                }
+                summarizedFillWordsChart.update()
             }
 
             is FileMessage -> {
@@ -94,9 +98,12 @@ class StatisticHandler(private val chatServer: ChatServer) {
 
     fun getTotalFileMessages() = processedMessages.count() { it is FileMessage }
 
+    /*
+    Methoden für das globale FillWordChart
+     */
     private fun processGlobalFillWords(message: String) {
         val words = formatMessage(message)
-        val containsFillWord = words.any() { fillWordGlobalChart.fillWordsCount.containsKey(it) }
+        val containsFillWord = words.any() { fillWordGlobalChart.isFillWord(it) }
 
         if (containsFillWord) {
             for (word in words) {
@@ -107,6 +114,9 @@ class StatisticHandler(private val chatServer: ChatServer) {
         }
     }
 
+    /*
+    Methode für das globale TriggerWordChart
+     */
     private fun processGlobalTriggerWords(message: String) {
         val words = formatMessage(message)
         val containsTriggerWord = words.any() { triggerWordGlobalChart.isTriggerWord(it) }
@@ -119,58 +129,4 @@ class StatisticHandler(private val chatServer: ChatServer) {
             triggerWordGlobalChart.update()
         }
     }
-
-//    private fun updateUserFillWords(serverClient: ServerClient, message: String) {
-//        val trimmer = Regex("\\s+")
-//        val words = message.split(trimmer)
-//        val fillWordChart = getOrCreateFillWordChart(serverClient)
-//        val containsFillWord = words.any() { fillWordChart.isFillWord(it) }
-//
-//        if (containsFillWord) {
-//            for (word in words) {
-//                fillWordChart.countIfFillWord(word)
-//            }
-//
-//            fillWordChart.update()
-//        }
-//    }
-//
-//    fun getUserCharts(serverClient: ServerClient): List<StatisticChart> {
-//        val fillWordChart = getOrCreateFillWordChart(serverClient)
-//        val triggerWordChart = getOrCreateTriggerWordChart(serverClient)
-//
-//        return listOf(fillWordChart, triggerWordChart)
-//    }
-//
-//    fun setSelected(serverClient: ServerClient) {
-//        userStatsSelected = serverClient
-//    }
-//
-//    private fun getOrCreateFillWordChart(serverClient: ServerClient): FillWordChart {
-//        val charts = userCharts.getOrPut(serverClient) { mutableListOf() }
-//        val fillWordChart = charts.filterIsInstance<FillWordChart>().firstOrNull()
-//
-//        if (fillWordChart != null) {
-//            return fillWordChart
-//        } else {
-//            val newFillWordChart = FillWordChart(serverClient.getUsername())
-//            charts.add(newFillWordChart)
-//
-//            return newFillWordChart
-//        }
-//    }
-//
-//    private fun getOrCreateTriggerWordChart(serverClient: ServerClient): TriggerWordChart {
-//        val charts = userCharts.getOrPut(serverClient) { mutableListOf() }
-//        val triggerWordChart = charts.filterIsInstance<TriggerWordChart>().firstOrNull()
-//
-//        if (triggerWordChart != null) {
-//            return triggerWordChart
-//        } else {
-//            val newTriggerWordChart = TriggerWordChart(serverClient.getUsername())
-//            charts.add(newTriggerWordChart)
-//
-//            return newTriggerWordChart
-//        }
-//    }
 }

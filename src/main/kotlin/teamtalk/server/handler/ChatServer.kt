@@ -51,8 +51,9 @@ class ChatServer(port: Int) {
     fun getUser(username: String) = users.firstOrNull { it.getName() == username }
 
     fun addUser(username: String) {
-        users.add(ServerUser(username))
-        gui.updateUserList()
+        val newUser = ServerUser(this, username)
+        users.add(newUser)
+        gui.updateUserList(newUser)
     }
 
     fun getClients(): List<ServerClient> {

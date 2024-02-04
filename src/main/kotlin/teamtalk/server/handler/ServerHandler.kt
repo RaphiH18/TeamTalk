@@ -6,8 +6,10 @@ import teamtalk.message.TextMessage
 import teamtalk.jsonUtil
 import teamtalk.logger.debug
 import teamtalk.logger.log
+import teamtalk.message.FileMessage
 import teamtalk.server.handler.network.ServerClient
 import teamtalk.server.handler.network.ServerHeader
+import java.io.File
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.SocketException
@@ -131,6 +133,9 @@ class ServerHandler(private val chatServer: ChatServer) {
                                 debug("<- Von Server erhalten: Nur Daten, eingelesen: $bytesRead")
                                 receiverUser.getClient().sendPayload(fileChunkBytes.copyOf(bytesRead))
                             }
+
+                            val message = FileMessage(senderName, receiverName, Instant.now(), File(headerJSON.getString("filename")))
+                            chatServer.getStats().newMessages.add(message)
                         }
                     } else {
                         serverClient.send(ServerHeader.MESSAGE_RESPONSE.toJSON(this, "USER_NOT_EXISTS", receiverName, senderName, headerJSON.getInt("payloadSize")))

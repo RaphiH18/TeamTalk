@@ -4,7 +4,7 @@ import teamtalk.server.handler.network.ServerClient
 import teamtalk.server.stats.UserStatistic
 import java.time.Instant
 
-class ServerUser(private var username: String) {
+class ServerUser(private val chatServer: ChatServer, private var username: String) {
 
     private val userStats = UserStatistic(this)
 
@@ -27,5 +27,7 @@ class ServerUser(private var username: String) {
     fun isOnline() = this::serverClient.isInitialized
 
     fun getStats() = userStats
+
+    fun getIndex() = chatServer.getUsers().indexOf(this)
 
 }

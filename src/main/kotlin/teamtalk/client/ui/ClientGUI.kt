@@ -22,10 +22,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import teamtalk.client.handler.ChatClient
 import teamtalk.client.handler.ClientHeader
-import teamtalk.message.Contact
-import teamtalk.message.FileMessage
-import teamtalk.message.TextMessage
-import teamtalk.message.toFormattedString
+import teamtalk.message.*
 import java.awt.Desktop
 import java.io.File
 import java.io.FileInputStream
@@ -231,10 +228,13 @@ class ClientGUI(private val chatClient: ChatClient) {
     fun updateContactView() {
         val contactData = FXCollections.observableArrayList<String>()
         for (contact in chatClient.getHandler().getContacts()) {
-            if (contact.isOnline()) {
-                contactData.add(contact.getUsername())
+            if (contact.getUsername() != chatClient.getUsername()) { //Client soll sich selbst nicht als Kontakt in der Liste anzeigen
+                if (contact.isOnline()) {
+                    contactData.add(contact.getUsername())
+                }
             }
         }
+
         guiScope.launch {
             contactList.items = contactData
         }
@@ -249,8 +249,8 @@ class ClientGUI(private val chatClient: ChatClient) {
                 val selectedContact = chatClient.getHandler().getContacts().find { it.getUsername() == selectionModel.selectedItem }
                 if ((selectedContact != null)) {
                     if (selectedContact.getUsername() != currentUser) {
-                        updateGuiMessagesFromContact(selectedContact, "GUI_CLICK")
                         currentUser = selectedContact.getUsername()
+                        updateMessages(selectedContact, "GUI_CLICK")
                     }
                 }
             }
@@ -293,7 +293,6 @@ class ClientGUI(private val chatClient: ChatClient) {
             children.add(inputChatTa)
         }
 
-        //Button, um ein Text-Chat zu senden
         val sendChatBtn = Button("Senden").apply {
             padding = Insets(0.0, 0.0, 0.0, 0.0)
             prefHeight = 30.0
@@ -334,24 +333,6 @@ class ClientGUI(private val chatClient: ChatClient) {
             font = Font("Arial", 18.0)
             style = ("-fx-background-color: #E8E8E8")
         }
-
-//        // Ergänzen dynamische Gruppe für Downloadable Files
-//        val testFile1Btn = Button("Meilensteintrendanalyse.xlsx").apply {
-//            prefWidth = 250.0
-//        }
-//
-//        val testFile1Vb = VBox().apply {
-//            padding = Insets(5.0, 0.0, 0.0, 0.0)
-//            children.add(testFile1Btn)
-//        }
-//
-//        val testFile2Btn = Button("Praesentation.pptx").apply {
-//            prefWidth = 250.0
-//        }
-//        val testFile2Content = VBox().apply {
-//            padding = Insets(5.0, 0.0, 0.0, 0.0)
-//            children.add(testFile2Btn)
-//        }
 
         receivedFilesVBox = VBox().apply {
             prefHeight = 390.0
@@ -474,49 +455,61 @@ class ClientGUI(private val chatClient: ChatClient) {
         return allContentVb
     }
 
-    fun updateGuiMessagesFromContact(contact: Contact, updateCause: String) {
-        println("update is for contact=${contact.getUsername()}")
-        println("currentUser=$currentUser")
-        var fetchOnlyNewMessages = false
-        if (currentUser == contact.getUsername()) {
-            fetchOnlyNewMessages = true
-        }
-        if (contact.getMessages().none { it is TextMessage }) {
-            println("No texts for this contact! (${contact.getUsername()})")
-            outputChatTa.text = ""
-        }
-        if (contact.getMessages().none() {it is FileMessage}) {
-            println("No files for this contact! (${contact.getUsername()})")
-        }
-        if (fetchOnlyNewMessages) {
-            println("Updating only new messages")
-            for (message in contact.getNewMessages()) {
-                println(message)
-                when (message) {
-                    is TextMessage -> {
-                        outputChatTa.appendText("${message.getTimestamp().toFormattedString()} - ${message.getSenderName()}\n ${message.getMessage()}\n\n")
+    /*
+    TODO: BUG-Behebung
+    User A sendet User B eine Nachricht.
+    Bei User B ist User A NICHT ausgewählt -> kein Update der Nachricht bei User B. -> OK.
+    User B wählt nun User A aus, User B sieht nun die gesendete Nachricht von User A -> OK.
+    Wenn nun User B eine Antwort an User A schreibt, wird User B die erste Nachricht von User A zweimal angezeigt,
+    dazu noch seine Antwort an User A. -> Das ist falsch.
+
+    Es müsste die Nachricht von User A und die antwort darauf von User B bei User B nur einmal angezeigt werden.
+     */
+
+    fun updateMessages(contact: Contact, updateCause: String) {
+        guiScope.launch {
+            val messages = contact.getMessages()
+
+            println("**********************")
+            println("Updating GUI for contact: ${contact.getUsername()}")
+            println("Currently selected chat: $currentUser")
+            println("Updating reason: $updateCause")
+
+            if (contact.getUsername() == currentUser) {
+                when (updateCause) {
+                    "GUI_CLICK" -> {
+                        outputChatTa.text = ""
+                        receivedFilesVBox.children.clear()
+
+                        for (message in messages) {
+                            addMessage(message)
+                        }
+
+                        contact.clearNewMessagesQueue()
                     }
-                    is FileMessage -> {
-                        addFileToGUI(message.getMessage())
+
+                    "NEW_MESSAGE" -> {
+                        for (message in contact.getNewMessages()) {
+                            addMessage(message)
+                        }
                     }
                 }
             }
-        } else {
-            if (updateCause == "GUI_CLICK") {
-                println("updating all messages!")
-                outputChatTa.text = ""
-                receivedFilesVBox.children.clear()
-                for (message in contact.getMessages()) {
-                    println(message)
-                    when (message) {
-                        is TextMessage -> {
-                            outputChatTa.appendText("${message.getTimestamp().toFormattedString()} - ${message.getSenderName()}\n ${message.getMessage()}\n\n")
-                        }
-                        is FileMessage -> {
-                            addFileToGUI(message.getMessage())
-                        }
-                    }
-                }
+        }
+    }
+
+    private fun addMessage(message: Message) {
+        println("Adding message: $message")
+        when (message) {
+            is TextMessage -> {
+                outputChatTa.appendText(
+                    "${message.getTimestamp().toFormattedString()} - " +
+                            "${message.getSenderName()}\n ${message.getMessage()}\n\n"
+                )
+            }
+
+            is FileMessage -> {
+                addFileToGUI(message.getMessage())
             }
         }
     }

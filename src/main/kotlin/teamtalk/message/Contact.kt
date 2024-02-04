@@ -1,33 +1,36 @@
 package teamtalk.message
 
-import teamtalk.message.FileMessage
-import teamtalk.message.Message
-import teamtalk.message.TextMessage
+import java.util.*
 
 class Contact(private val username: String, private var online: Boolean = false) {
 
     private val messages = mutableListOf<Message>()
-    private var lastNewMessageIndex = -1
+    private val newMessagesQueue = ArrayDeque<Message>()
 
     fun addMessage(textMessage: TextMessage) {
         messages.add(textMessage)
+        newMessagesQueue.add(textMessage)
     }
 
     fun addMessage(fileMessage: FileMessage) {
         messages.add(fileMessage)
+        newMessagesQueue.add(fileMessage)
     }
 
-    fun getMessages() = messages
+    fun getMessages(): MutableList<Message> {
+        return messages
+    }
 
     fun getNewMessages(): List<Message> {
-        val newMessages: List<Message>
-        if ((lastNewMessageIndex + 1) < messages.size) {
-            newMessages = messages.subList(lastNewMessageIndex + 1, messages.size)
-            lastNewMessageIndex = messages.size - 1
-            return newMessages
-        } else {
-            return emptyList()
+        val newMessages = mutableListOf<Message>()
+        while (newMessagesQueue.isNotEmpty()) {
+            newMessages.add(newMessagesQueue.removeFirst())
         }
+        return newMessages
+    }
+
+    fun clearNewMessagesQueue() {
+        newMessagesQueue.clear()
     }
 
     fun getUsername() = username

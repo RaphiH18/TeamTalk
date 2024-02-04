@@ -85,10 +85,9 @@ class ClientHandler(private var chatClient: ChatClient) {
                 "HELLO_RESPONSE" -> {
                     val userList = headerJSON.getJSONArray("userList")
                     for (user in userList) {
-//                        if (user != chatClient.getUsername()) {
-//                            contacts.add(Contact(user.toString()))
-//                        }
-                        contacts.add(Contact(user.toString()))
+                        if (user != chatClient.getUsername()) {
+                            contacts.add(Contact(user.toString()))
+                        }
                     }
                     chatClient.getGUI().updateContactStatus(headerJSON)
                 }
@@ -96,19 +95,14 @@ class ClientHandler(private var chatClient: ChatClient) {
                 "MESSAGE_RESPONSE" -> {
                     val messageBytes = ByteArray(payloadSize)
                     input.readFully(messageBytes)
-                    val message = String(messageBytes, Charsets.UTF_8)
+                    val messageText = String(messageBytes, Charsets.UTF_8)
 
                     val contact = contacts.find { it.getUsername() == headerJSON.getString("receiverName") }
                     if (contact != null) {
-                        contact.addMessage(
-                            TextMessage(
-                                chatClient.getUsername(),
-                                contact.getUsername(),
-                                Instant.now(),
-                                message
-                            )
-                        )
-                        chatClient.getGUI().updateGuiMessagesFromContact(contact, "NEW_MESSAGE")
+                        val message = TextMessage(chatClient.getUsername(), contact.getUsername(), Instant.now(), messageText)
+                        contact.addMessage(message)
+
+                        chatClient.getGUI().updateMessages(contact, "NEW_MESSAGE")
                     }
                 }
 
@@ -127,7 +121,7 @@ class ClientHandler(private var chatClient: ChatClient) {
                                 message
                             )
                         )
-                        chatClient.getGUI().updateGuiMessagesFromContact(contact, "NEW_MESSAGE")
+                        chatClient.getGUI().updateMessages(contact, "NEW_MESSAGE")
                     }
                 }
 
@@ -159,7 +153,7 @@ class ClientHandler(private var chatClient: ChatClient) {
                                 file
                             )
                         )
-                        chatClient.getGUI().updateGuiMessagesFromContact(contact, "NEW_MESSAGE")
+                        chatClient.getGUI().updateMessages(contact, "NEW_MESSAGE")
                     }
                 }
 

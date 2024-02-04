@@ -1,48 +1,60 @@
 package teamtalk.server.stats
 
+import org.w3c.dom.Text
+import teamtalk.message.FileMessage
+import teamtalk.message.Message
+import teamtalk.message.TextMessage
 import teamtalk.server.handler.ServerUser
+import teamtalk.server.handler.UserData
 import teamtalk.server.stats.charts.FillWordChart
 import teamtalk.server.stats.charts.StatisticChart
 import teamtalk.server.stats.charts.TriggerWordChart
 import java.io.File
+import kotlin.time.Duration
 
 class UserStatistic(private val user: ServerUser) {
 
-    val charts = mutableListOf<StatisticChart>()
-    private val fillWordChart = FillWordChart(user.getName())
-    private val triggerWordChart = TriggerWordChart(user.getName())
+    var sentTextMessages = 0
+    var receivedTextMessages = 0
+    var sentFileMessages = 0
+    var receivedFileMessages = 0
 
-    var sentMessages = 0
-    var receivedMessages = 0
-    var sentFiles = 0
-    var receivedFiles = 0
+    val charts = mutableListOf<StatisticChart>()
+    val fillWordChart = FillWordChart(user)
+    val triggerWordChart = TriggerWordChart(user)
 
     init {
-        createCharts()
-    }
-
-    private fun createCharts() {
         charts.add(fillWordChart)
         charts.add(triggerWordChart)
     }
 
-    fun processMessage(message: String) {
-        processFillWords(message)
-        processTriggerWords(message)
-    }
+    fun processMessage(message: Message) {
+        when(message) {
+            is TextMessage -> {
+                when (user.getName()) {
+                    message.getSenderName() -> {
+                        sentTextMessages += 1
+                        processFillWords(message.getMessage())
+                        processTriggerWords(message.getMessage())
+                    }
 
-    fun processMessage(file: File) {
-        /*
-            TODO: Verarbeitung von FileMessages
-        */
-    }
-
-    fun incrementSentMessage() {
-        sentMessages += 1
-    }
-
-    fun incrementReceivedMsg() {
-        receivedMessages += 1
+                    message.getReceiverName() -> {
+                        receivedTextMessages += 1
+                    }
+                }
+            }
+            is FileMessage -> {
+                println("FILE!")
+                when (user.getName()) {
+                    message.getSenderName() -> {
+                        sentFileMessages += 1
+                    }
+                    message.getReceiverName() -> {
+                        receivedFileMessages += 1
+                    }
+                }
+            }
+        }
     }
 
     private fun formatMessage(message: String): List<String> {
@@ -81,7 +93,18 @@ class UserStatistic(private val user: ServerUser) {
         }
     }
 
-//    fun getAverageAnswerTime(serverClient: ServerClient): Duration {
+    fun toUserData(): UserData {
+        return UserData(
+            this.sentTextMessages,
+            this.receivedTextMessages,
+            this.sentFileMessages,
+            this.receivedFileMessages,
+            this.fillWordChart.getData(),
+            this.triggerWordChart.getData(),
+        )
+    }
+
+//    fun getAverageAnswerTime(otherUser: ServerUser): Duration {
 //        var averageAnsTime: Duration = Duration.ZERO
 //        var messageCount = 0
 //

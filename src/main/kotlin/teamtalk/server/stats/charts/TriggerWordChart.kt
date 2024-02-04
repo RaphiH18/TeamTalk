@@ -1,23 +1,36 @@
 package teamtalk.server.stats.charts
 
 import javafx.collections.FXCollections
+import javafx.embed.swing.SwingFXUtils
+import javafx.scene.Group
+import javafx.scene.Scene
 import javafx.scene.chart.PieChart
+import javafx.scene.control.ContextMenu
+import javafx.scene.control.MenuItem
+import javafx.scene.image.WritableImage
+import javafx.scene.input.MouseButton
+import javafx.stage.FileChooser
+import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
+import teamtalk.server.handler.ServerUser
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import javax.imageio.ImageIO
 
-class TriggerWordChart(private val titleSuffix: String = " ") : StatisticChart() {
+class TriggerWordChart(private val user: ServerUser? = null) : StatisticChart() {
 
     enum class WordCategory {
-        POSITIVE, NEUTRAL, NEGATIVE, NONE;
+        POSITIVE, NEUTRAL, NEGATIVE;
 
         override fun toString(): String {
             return when(this) {
                 POSITIVE    -> "Positiv"
                 NEUTRAL     -> "Neutral"
                 NEGATIVE    -> "Negativ"
-                NONE        -> "Keine Kategorie"
             }
         }
     }
@@ -29,28 +42,97 @@ class TriggerWordChart(private val titleSuffix: String = " ") : StatisticChart()
     private val triggerWordsChartData = FXCollections.observableArrayList<PieChart.Data>()
     private val triggerWordsChart = create()
 
+    private var firstUpdate = true
+
     /*
     Chart-Logik
      */
     override fun create(): PieChart {
         triggerWordsChartData.add(PieChart.Data("Keine Daten", 1.0))
+        createContextMenu()
 
         return PieChart(triggerWordsChartData).apply {
             labelsVisible = true
-            title = "Triggerwörter $titleSuffix"
+
+            if (user == null) {
+                title = "Triggerwörter"
+            } else {
+                title = "Triggerwörter Benutzer ${user.getIndex() + 1}"
+            }
         }
     }
 
     override fun update() {
         guiScope.launch {
-            triggerWordsChartData.clear()
-            triggerWordsChartData.add(PieChart.Data(WordCategory.NEGATIVE.toString(), triggerWordsCount[0].values.sum().toDouble()))
-            triggerWordsChartData.add(PieChart.Data(WordCategory.POSITIVE.toString(), triggerWordsCount[0].values.sum().toDouble()))
-            triggerWordsChartData.add(PieChart.Data(WordCategory.NEUTRAL.toString(), triggerWordsCount[0].values.sum().toDouble()))
+            val categoryCounts = getCategoryCounts()
+
+            val atLeastOneWordUsed = categoryCounts.any { it.value > 0 }
+
+            if (firstUpdate && atLeastOneWordUsed) {
+                triggerWordsChart.data.clear()
+                firstUpdate = false
+            }
+
+            //Aktualisiert die Chart-Daten
+            for (category in WordCategory.values()) {
+                var found = false
+
+                for (data in triggerWordsChartData) {
+                    if (data.name == category.toString()) {
+                        data.pieValue = categoryCounts.getValue(category).toDouble()
+                        found = true
+                        break
+                    }
+                }
+
+                if ((found.not()) and (categoryCounts.getValue(category) > 0)) {
+                    triggerWordsChartData.add(PieChart.Data(category.toString(), categoryCounts.getValue(category).toDouble()))
+                }
+            }
+
+            if (user != null) {
+                triggerWordsChart.title = "Triggerwörter Benutzer ${user.getIndex() + 1}"
+            }
         }
     }
 
+    fun copy(): PieChart {
+        val copiedChartData = FXCollections.observableArrayList<PieChart.Data>()
+        for (data in triggerWordsChartData) {
+            copiedChartData.add(PieChart.Data(data.name, data.pieValue))
+        }
+
+        val copiedChart = PieChart(copiedChartData).apply {
+            labelsVisible = triggerWordsChart.labelsVisible
+            title = triggerWordsChart.title
+        }
+
+        return copiedChart
+    }
+
     override fun getChart() = triggerWordsChart
+
+    fun save() {
+        val fileChooser = FileChooser().apply {
+            initialDirectory = File(System.getProperty("user.home"))
+            title = "Speichern als"
+            extensionFilters.add(FileChooser.ExtensionFilter("PNG-Dateien", "*.png"))
+        }
+
+        val file = fileChooser.showSaveDialog(triggerWordsChart.scene.window)
+
+        if (file != null) {
+            val copiedChart = copy()
+            copiedChart.prefWidth = 800.0
+            copiedChart.prefHeight = 600.0
+
+            val dummyScene = Scene(Group(), 800.0, 600.0)
+            (dummyScene.root as Group).getChildren().add(copiedChart)
+
+            val image = dummyScene.snapshot(null)
+            ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", file)
+        }
+    }
 
     /*
     Interne Logik
@@ -83,8 +165,60 @@ class TriggerWordChart(private val titleSuffix: String = " ") : StatisticChart()
             return WordCategory.NEGATIVE
         }
 
-        return WordCategory.NONE
+        return WordCategory.NEUTRAL
     }
+
+    private fun getCategoryCounts(): Map<WordCategory, Int> {
+        val categoryCounts = mutableMapOf(
+            WordCategory.POSITIVE to 0,
+            WordCategory.NEUTRAL to 0,
+            WordCategory.NEGATIVE to 0
+        )
+
+        for (index in triggerWordsCount.indices) {
+            val category = when (index) {
+                0 -> WordCategory.POSITIVE
+                1 -> WordCategory.NEUTRAL
+                2 -> WordCategory.NEGATIVE
+                else -> continue
+            }
+
+            for (entry in triggerWordsCount[index].entries) {
+                val sum = entry.value
+                categoryCounts[category] = categoryCounts.getValue(category) + sum
+            }
+        }
+
+        return categoryCounts
+    }
+
+    private fun createContextMenu() {
+        guiScope.launch {
+            val contextMenu = ContextMenu()
+            val saveItem = MenuItem("Statistik als Bild speichern")
+            val cancelItem = MenuItem("Abbrechen")
+
+            contextMenu.items.addAll(saveItem, cancelItem)
+
+            saveItem.setOnAction {
+                save()
+            }
+
+            cancelItem.setOnAction {
+                contextMenu.hide()
+            }
+
+            triggerWordsChart.setOnMouseClicked {
+                if (it.button == MouseButton.SECONDARY) {
+                    contextMenu.show(triggerWordsChart, it.screenX, it.screenY)
+                } else if (contextMenu.isShowing) {
+                    contextMenu.hide()
+                }
+            }
+        }
+    }
+
+    fun getData() = triggerWordsCount.toList()
 
     private fun loadTriggerWords() : List<MutableMap<String, Int>> {
         return listOf(
