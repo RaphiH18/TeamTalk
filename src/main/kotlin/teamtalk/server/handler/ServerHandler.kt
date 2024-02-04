@@ -34,16 +34,30 @@ class ServerHandler(private val chatServer: ChatServer) {
             isRunning = true
             chatServer.getGUI().startRuntimeClock()
             while (true) {
+                println("Waiting for new connections.")
                 try {
                     val socket = serverSocket.accept()
                     debug("Neue eingehende Verbindung: ${socket.inetAddress.hostAddress}")
 
                     launch {
                         val serverClient = ServerClient(socket)
+                        println("New serverclient created")
 
-                        while (socket.isConnected) {
-                            process(serverClient)
+                        while (socket.isBound) {
+                            println("Waiting for new messages for this serverclient")
+                            try {
+                                process(serverClient)
+                            } catch (e: SocketException) {
+                                log("Verbindung von ${serverClient.getSocket().inetAddress.hostAddress} getrennt: ${e.message}.")
+                                break
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
                         }
+
+                        serverClient.getOutput().close()
+                        serverClient.getInput().close()
+                        serverClient.getSocket().close()
                     }
                 } catch (e: SocketException) {
                     log("Der Server wurde beendet (Socket closed).")

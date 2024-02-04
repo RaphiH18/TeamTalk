@@ -11,6 +11,8 @@ import javafx.scene.control.ButtonBar.ButtonData
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.text.Font
+import javafx.scene.text.Text
+import javafx.scene.text.TextFlow
 import javafx.stage.FileChooser
 import javafx.stage.FileChooser.ExtensionFilter
 import javafx.stage.Stage
@@ -47,10 +49,9 @@ class ClientGUI(private val chatClient: ChatClient) {
     private var sendFileBtn = Button("Senden")
     private var chosenFileLbl = Label("Keine Datei zum Senden ausgewählt")
     private var receivedFilesVBox = VBox()
-    private val receivedFiles = mutableListOf<VBox>()
     private lateinit var fileToSend: File
 
-    private val CHAT_EMPTY = "Chatfenster..."
+    private val CHAT_EMPTY = "Wähle einen Kontakt aus."
 
     private var currentUserLbl = Label()
     private var currentUser = ""
@@ -59,7 +60,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             currentUserLbl.text = value
         }
 
-    private val outputChatTa = TextArea()
+    private val conversationTF = TextFlow()
 
     private fun createBaseView(): VBox {
         val vBoxBase = VBox()
@@ -186,6 +187,7 @@ class ClientGUI(private val chatClient: ChatClient) {
                         usernameList.add(user.getUsername())
                     }
                 }
+                println(usernameList)
                 userChoice = ChoiceDialog(usernameList[0], usernameList)
             }
             with(userChoice) {
@@ -276,11 +278,10 @@ class ClientGUI(private val chatClient: ChatClient) {
             text = defaultUser
         }
 
-        outputChatTa.apply {
+        conversationTF.apply {
             prefHeight = 300.0
             prefWidth = 280.0
-            text = CHAT_EMPTY
-            isEditable = false
+            children.add(Text(CHAT_EMPTY))
         }
 
         val inputChatTa = TextArea("Schreiben...").apply {
@@ -314,7 +315,8 @@ class ClientGUI(private val chatClient: ChatClient) {
         val chatContentVb = VBox().apply {
             padding = Insets(10.0, 0.0, 10.0, 0.0)
             with(children) {
-                add(outputChatTa)
+                //add(outputChatTa)
+                add(conversationTF)
                 add(inputChatVb)
                 add(sendChatBtn)
             }
@@ -478,7 +480,8 @@ class ClientGUI(private val chatClient: ChatClient) {
             if (contact.getUsername() == currentUser) {
                 when (updateCause) {
                     "GUI_CLICK" -> {
-                        outputChatTa.text = ""
+                        //outputChatTa.text = ""
+                        conversationTF.children.clear()
                         receivedFilesVBox.children.clear()
 
                         for (message in messages) {
@@ -502,10 +505,11 @@ class ClientGUI(private val chatClient: ChatClient) {
         println("Adding message: $message")
         when (message) {
             is TextMessage -> {
-                outputChatTa.appendText(
-                    "${message.getTimestamp().toFormattedString()} - " +
-                            "${message.getSenderName()}\n ${message.getMessage()}\n\n"
-                )
+                val infoText = Text("${message.getTimestamp().toFormattedString()} - ${message.getSenderName()}:\n").apply {
+                    style = "-fx-font-weight: bold;"
+                }
+                val messageText = Text("${message.getMessage()}\n\n")
+                conversationTF.children.addAll(infoText, messageText)
             }
 
             is FileMessage -> {
