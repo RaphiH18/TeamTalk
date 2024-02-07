@@ -8,7 +8,7 @@ class ServerUser(private val chatServer: ChatServer, private var username: Strin
 
     private val userStats = UserStatistic(this)
 
-    private lateinit var serverClient: ServerClient
+    private var serverClient: ServerClient? = null
     private lateinit var loginTime: Instant
 
     fun getName() = username
@@ -24,9 +24,20 @@ class ServerUser(private val chatServer: ChatServer, private var username: Strin
 
     fun getClient() = serverClient
 
-    fun isOnline() = this::serverClient.isInitialized
+    fun logout() {
+        this.serverClient?.getSocket()?.close()
+        this.serverClient?.getInput()?.close()
+        this.serverClient?.getOutput()?.close()
+        this.serverClient = null
+    }
+
+    fun getLoginTime() = loginTime
+
+    fun isOnline() = serverClient != null
 
     fun getStats() = userStats
+
+    fun getServer() = chatServer
 
     fun getIndex() = chatServer.getUsers().indexOf(this)
 

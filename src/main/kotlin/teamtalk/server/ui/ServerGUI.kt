@@ -8,18 +8,16 @@ import javafx.scene.layout.GridPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
-import javafx.scene.paint.Color.*
+import javafx.scene.paint.Color.DARKRED
+import javafx.scene.paint.Color.GREEN
 import javafx.scene.shape.Circle
 import kotlinx.coroutines.*
 import kotlinx.coroutines.javafx.JavaFx
 import teamtalk.logger
 import teamtalk.server.handler.ChatServer
 import teamtalk.server.handler.ServerUser
-import teamtalk.server.stats.charts.SummarizedFillWordsChart
 import java.time.Duration
 import java.time.Instant
-import javax.print.attribute.standard.RequestingUserName
-import kotlin.math.exp
 import kotlin.system.exitProcess
 
 class ServerGUI(private val chatServer: ChatServer) {
@@ -47,6 +45,15 @@ class ServerGUI(private val chatServer: ChatServer) {
     private val ipTF = TextField("127.0.0.1")
     private val applyBTN = applyBTN()
 
+    // Globale Variablen/Values für den "Globale Statistik"-Tab
+    private val totalMessages = Label("0")
+    private val totalTextMessages = Label("0")
+    private val totalFileMessages = Label("0")
+    private val totalUsersTagged = Label("0")
+    private val averageAnswerTime = Label("0")
+    private val averageUsageTime = Label("0")
+
+
     //  Globale Variablen/Values für den "Detaillierte Statistik"-Tab
     private var selectedStatsVB = selectedStatsVB()
     private var detailedStatsMB = detailedStatsMB()
@@ -66,6 +73,18 @@ class ServerGUI(private val chatServer: ChatServer) {
             item("Schliessen") { exitProcess(0) }
         )
     )
+
+    fun increaseOnlineUsers() {
+        guiScope.launch {
+            onlineUsersLBL.text = "${onlineUsersLBL.text.toInt() + 1}"
+        }
+    }
+
+    fun decreaseOnlineUsers() {
+        guiScope.launch {
+            onlineUsersLBL.text = "${onlineUsersLBL.text.toInt() - 1}"
+        }
+    }
 
     private fun createContentVB(): VBox {
         return VBox().apply {
@@ -190,8 +209,27 @@ class ServerGUI(private val chatServer: ChatServer) {
             }
         }
 
+        val quickStatsGP = GridPane().apply {
+            vgap = 3.0
+            hgap = 30.0
+
+            add(Label("Total versendete Nachrichten:"), 0, 0)
+            add(Label("Total versendete Textnachrichten:"), 0, 1)
+            add(Label("Total versendete Dateien:"), 0, 2)
+            add(Label("Total getaggte Benutzer:"), 0, 3)
+            add(Label("Durchschnittliche Antwortzeit:"), 0, 4)
+            add(Label("Durchschnittliche Nutzungszeit:"), 0, 5)
+
+            add(totalMessages, 1,0 )
+            add(totalTextMessages, 1, 1)
+            add(totalFileMessages, 1, 2)
+            add(totalUsersTagged, 1, 3)
+            add(averageAnswerTime, 1, 4)
+            add(averageUsageTime, 1, 5)
+        }
+
         val statsTiPn = TitledPane("Statistiken", chartsGP)
-        val overviewTiPn = TitledPane("Übersicht", (Label("Inhalt Übersicht")))
+        val overviewTiPn = TitledPane("Übersicht", quickStatsGP)
 
         val globalStatsARC = Accordion().apply {
             expandedPane = statsTiPn
@@ -386,6 +424,21 @@ class ServerGUI(private val chatServer: ChatServer) {
         for (chart in user.getStats().charts) {
             chart.update()
         }
+
+        guiScope.launch {
+            totalUsersLBL.text = "${chatServer.getUsers().size}"
+        }
+    }
+
+    fun updateQuickStats() {
+        val user = chatServer.getUser("Raphael Hegi")!!
+        println(formatDuration(user.getStats().getAverageAnswerTime(chatServer.getUser("Lukas Ledergerber")!!)))
+        guiScope.launch {
+            totalMessages.text = "${chatServer.getStats().getTotalMessages()}"
+            totalTextMessages.text = "${chatServer.getStats().getTotalTextMessages()}"
+            totalFileMessages.text = "${chatServer.getStats().getTotalFileMessages()}"
+            averageAnswerTime.text = formatDuration(chatServer.getStats().getTotalAvgAnswerTime())
+        }
     }
 
     fun startRuntimeClock() {
@@ -407,5 +460,13 @@ class ServerGUI(private val chatServer: ChatServer) {
             runtimeClock.cancel()
             currentRuntimeLBL.text = "00:00:00"
         }
+    }
+
+    private fun formatDuration(duration: Duration): String {
+        val hours = duration.toHoursPart()
+        val minutes = duration.toMinutesPart()
+        val seconds = duration.toSecondsPart()
+
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds)
     }
 }

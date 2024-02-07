@@ -56,12 +56,22 @@ class ChatServer(port: Int) {
         gui.updateUserList(newUser)
     }
 
+    fun getUser(serverClient: ServerClient): ServerUser? {
+        for (user in users) {
+            if (user.getClient() == serverClient) {
+                return user
+            }
+        }
+
+        return null
+    }
+
     fun getClients(): List<ServerClient> {
         val clients = mutableListOf<ServerClient>()
 
         for (user in users) {
             if (user.isOnline()) {
-                clients.add(user.getClient())
+                clients.add(user.getClient()!!)
             }
         }
 

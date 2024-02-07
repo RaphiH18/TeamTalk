@@ -4,7 +4,10 @@ import javafx.collections.FXCollections
 import javafx.embed.swing.SwingFXUtils
 import javafx.scene.Group
 import javafx.scene.Scene
-import javafx.scene.chart.*
+import javafx.scene.chart.CategoryAxis
+import javafx.scene.chart.NumberAxis
+import javafx.scene.chart.StackedBarChart
+import javafx.scene.chart.XYChart
 import javafx.scene.control.ContextMenu
 import javafx.scene.control.MenuItem
 import javafx.scene.input.MouseButton

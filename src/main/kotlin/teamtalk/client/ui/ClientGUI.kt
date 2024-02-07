@@ -41,8 +41,8 @@ class ClientGUI(private val chatClient: ChatClient) {
     private val defaultIP = "127.0.0.1"
     private val defaultPort = "4444"
 
-    private val connectBtn = Button("Verbinden")
-    private val messageOutputLbl = Label("Bereit")
+    private var connectBtn = Button("Verbinden")
+    private var messageOutputLbl = Label("Bereit")
 
     private var contactList = ListView<String>()
 
@@ -60,6 +60,8 @@ class ClientGUI(private val chatClient: ChatClient) {
             currentUserLbl.text = value
         }
 
+    private val conversationSP = ScrollPane()
+    private val conversationVB = VBox()
     private val conversationTF = TextFlow()
 
     private fun createBaseView(): VBox {
@@ -215,6 +217,23 @@ class ClientGUI(private val chatClient: ChatClient) {
         }
     }
 
+    fun exit(stage: Stage) {
+        guiScope.launch {
+            val alert = Alert(AlertType.ERROR)
+            alert.title = "Verbindung getrennt"
+            alert.headerText = "Verbindung zum Server getrennt"
+            alert.contentText = "Die Verbindung zum Server wurde getrennt.\n" +
+                    "Die Anwendung wird nun beendet.\n" +
+                    "\n" +
+                    "Kontaktiere den Systemadministrator, wenn das Problem weiterhin besteht."
+            val result = alert.showAndWait()
+
+            if (result.isPresent && result.get() == ButtonType.OK) {
+                exitProcess(0)
+            }
+        }
+    }
+
     fun updateContactStatus(onlineContacts: JSONObject) {
         val onlineContactsFormatted = onlineContacts.getJSONArray("onlineUserList")
         for (contact in chatClient.getHandler().getContacts()) {
@@ -278,9 +297,17 @@ class ClientGUI(private val chatClient: ChatClient) {
             text = defaultUser
         }
 
-        conversationTF.apply {
+        conversationSP.apply {
             prefHeight = 300.0
             prefWidth = 280.0
+            content = conversationVB
+        }
+
+        conversationVB.apply {
+            children.add(conversationTF)
+        }
+
+        conversationTF.apply {
             children.add(Text(CHAT_EMPTY))
         }
 
@@ -300,14 +327,16 @@ class ClientGUI(private val chatClient: ChatClient) {
             prefWidth = 280.0
             setOnAction {
                 if (inputChatTa.text.isEmpty().not()) {
-                    val messageBytes = inputChatTa.text.toByteArray(Charsets.UTF_8)
+                    if (currentUser != "") {
+                        val messageBytes = inputChatTa.text.toByteArray(Charsets.UTF_8)
 
-                    chatClient.getHandler().send(
-                        ClientHeader.MESSAGE.toJSON(chatClient, currentUser, messageBytes.size.toLong()),
-                        messageBytes
-                    )
+                        chatClient.getHandler().send(
+                            ClientHeader.MESSAGE.toJSON(chatClient, currentUser, messageBytes.size.toLong()),
+                            messageBytes
+                        )
 
-                    inputChatTa.clear()
+                        inputChatTa.clear()
+                    }
                 }
             }
         }
@@ -316,7 +345,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             padding = Insets(10.0, 0.0, 10.0, 0.0)
             with(children) {
                 //add(outputChatTa)
-                add(conversationTF)
+                add(conversationSP)
                 add(inputChatVb)
                 add(sendChatBtn)
             }
@@ -502,18 +531,25 @@ class ClientGUI(private val chatClient: ChatClient) {
     }
 
     private fun addMessage(message: Message) {
-        println("Adding message: $message")
-        when (message) {
-            is TextMessage -> {
-                val infoText = Text("${message.getTimestamp().toFormattedString()} - ${message.getSenderName()}:\n").apply {
-                    style = "-fx-font-weight: bold;"
-                }
-                val messageText = Text("${message.getMessage()}\n\n")
-                conversationTF.children.addAll(infoText, messageText)
-            }
+        guiScope.launch {
+            when (message) {
+                is TextMessage -> {
+                    val timestampText = Text("${message.getTimestamp().toFormattedString()}\n").apply {
+                        style = "-fx-font-size: 11px;"
+                    }
+                    val senderNameText = Text("${message.getSenderName()}: ").apply {
+                        style = "-fx-font-weight: bold;"
+                    }
+                    val messageText = Text("${message.getMessage()}\n\n")
+                    conversationTF.children.addAll(timestampText, senderNameText, messageText)
 
-            is FileMessage -> {
-                addFileToGUI(message.getMessage())
+                    delay(100)
+                    conversationSP.vvalue = conversationSP.vmax
+                }
+
+                is FileMessage -> {
+                    addFileToGUI(message.getMessage())
+                }
             }
         }
     }

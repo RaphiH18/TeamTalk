@@ -13,7 +13,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
-import teamtalk.server.handler.ChatServer
 import teamtalk.server.handler.ServerUser
 import java.io.File
 import javax.imageio.ImageIO
@@ -22,7 +21,7 @@ class FillWordChart(private val user: ServerUser? = null) : StatisticChart() {
 
     private val guiScope = CoroutineScope(Dispatchers.JavaFx)
 
-    private val fillWordsCount = loadFillWords()
+    private var fillWordsCount = loadFillWords()
 
     private val fillWordsChartData = FXCollections.observableArrayList<PieChart.Data>()
     private val fillWordsChart = create()
@@ -74,7 +73,7 @@ class FillWordChart(private val user: ServerUser? = null) : StatisticChart() {
         }
     }
 
-    fun copy(): PieChart {
+    private fun copy(): PieChart {
         val copiedChartData = FXCollections.observableArrayList<PieChart.Data>()
         for (data in fillWordsChartData) {
             copiedChartData.add(PieChart.Data(data.name, data.pieValue))
@@ -89,7 +88,7 @@ class FillWordChart(private val user: ServerUser? = null) : StatisticChart() {
     }
 
 
-    fun save() {
+    private fun save() {
         val fileChooser = FileChooser().apply {
             initialDirectory = File(System.getProperty("user.home"))
             title = "Speichern als"
@@ -118,6 +117,11 @@ class FillWordChart(private val user: ServerUser? = null) : StatisticChart() {
      */
 
     fun getData() = fillWordsCount
+
+    fun setData(data: Map<String, Int>) {
+        this.fillWordsCount = data.toMutableMap()
+        update()
+    }
 
     private fun createContextMenu() {
         guiScope.launch {

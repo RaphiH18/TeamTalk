@@ -1,12 +1,14 @@
 package teamtalk.server.handler
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.json.JSONObject
-import teamtalk.message.TextMessage
 import teamtalk.jsonUtil
 import teamtalk.logger.debug
 import teamtalk.logger.log
 import teamtalk.message.FileMessage
+import teamtalk.message.TextMessage
 import teamtalk.server.handler.network.ServerClient
 import teamtalk.server.handler.network.ServerHeader
 import java.io.File
@@ -34,33 +36,35 @@ class ServerHandler(private val chatServer: ChatServer) {
             isRunning = true
             chatServer.getGUI().startRuntimeClock()
             while (true) {
-                println("Waiting for new connections.")
                 try {
                     val socket = serverSocket.accept()
                     debug("Neue eingehende Verbindung: ${socket.inetAddress.hostAddress}")
 
                     launch {
                         val serverClient = ServerClient(socket)
-                        println("New serverclient created")
 
-                        while (socket.isBound) {
-                            println("Waiting for new messages for this serverclient")
+                        while (!(socket.isClosed)) {
                             try {
                                 process(serverClient)
                             } catch (e: SocketException) {
-                                log("Verbindung von ${serverClient.getSocket().inetAddress.hostAddress} getrennt: ${e.message}.")
+                                val loggedOutUser = chatServer.getUser(serverClient)
+
+                                if (loggedOutUser != null) {
+                                    chatServer.getGUI().decreaseOnlineUsers()
+                                    loggedOutUser.getStats().updateUsageTime()
+                                    loggedOutUser.getStats().saveToFile()
+                                    log("Verbindung von ${chatServer.getUser(serverClient)?.getName()} (${serverClient.getSocket().inetAddress.hostAddress}) getrennt.")
+                                } else {
+                                    log("Verbindung von ${serverClient.getSocket().inetAddress.hostAddress} getrennt.")
+                                }
                                 break
-                            } catch (e: Exception) {
-                                e.printStackTrace()
                             }
                         }
 
-                        serverClient.getOutput().close()
-                        serverClient.getInput().close()
-                        serverClient.getSocket().close()
+                        chatServer.getUser(serverClient)?.logout()
                     }
                 } catch (e: SocketException) {
-                    log("Der Server wurde beendet (Socket closed).")
+                    log("Der Server wurde beendet (${e.message}).")
                     isRunning = false
                     break
                 }
@@ -90,10 +94,12 @@ class ServerHandler(private val chatServer: ChatServer) {
                 "LOGIN" -> {
                     val username = headerJSON.get("username").toString()
                     val user = chatServer.getUser(username)
+                    println("Login Request erhalten für: ${user?.getName()}")
 
                     if (user != null) {
                         user.login(serverClient)
-                        log("Login erfolgreich: (${user.getName()}) hat sich eingeloggt.")
+                        log("Login erfolgreich: ${user.getName()} (${serverClient.getSocket().inetAddress.hostAddress}) hat sich eingeloggt.")
+                        chatServer.getGUI().increaseOnlineUsers()
                         broadcast(ServerHeader.STATUS_UPDATE.toJSON(this))
                     } else {
                         serverClient.send(ServerHeader.LOGIN_RESPONSE.toJSON(this, "USER_NOT_EXISTS"))
@@ -113,7 +119,7 @@ class ServerHandler(private val chatServer: ChatServer) {
 
                     if (receiverUser != null) {
                         if (receiverUser.isOnline()) {
-                            receiverUser.getClient().send(headerJSON, messageBytes)
+                            receiverUser.getClient()!!.send(headerJSON, messageBytes)
 
                             serverClient.send(
                                 ServerHeader.MESSAGE_RESPONSE.toJSON(this, "FORWARDED", receiverName, senderName, messageBytes.size),
@@ -136,7 +142,7 @@ class ServerHandler(private val chatServer: ChatServer) {
 
                     if (receiverUser != null) {
                         if (receiverUser.isOnline()) {
-                            receiverUser.getClient().sendHeader(headerJSON)
+                            receiverUser.getClient()!!.sendHeader(headerJSON)
 
                             val fileChunkBytes = ByteArray(4 * 1024)
 
@@ -145,7 +151,7 @@ class ServerHandler(private val chatServer: ChatServer) {
                                 val bytesRead = serverClient.getInput().read(fileChunkBytes)
                                 bytesReadTotal += bytesRead
                                 debug("<- Von Server erhalten: Nur Daten, eingelesen: $bytesRead")
-                                receiverUser.getClient().sendPayload(fileChunkBytes.copyOf(bytesRead))
+                                receiverUser.getClient()!!.sendPayload(fileChunkBytes.copyOf(bytesRead))
                             }
 
                             val message = FileMessage(senderName, receiverName, Instant.now(), File(headerJSON.getString("filename")))
@@ -175,9 +181,7 @@ class ServerHandler(private val chatServer: ChatServer) {
         for (user in chatServer.getUsers()) {
             if (user.isOnline()) {
                 try {
-                    user.getClient().getInput().close()
-                    user.getClient().getOutput().close()
-                    user.getClient().getSocket().close()
+                    user.logout()
                 } catch (e: Exception) {
                     log("Fehler beim Schliessen der Client-Verbindung: ${e.message}")
                 }

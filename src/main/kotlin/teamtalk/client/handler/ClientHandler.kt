@@ -1,16 +1,19 @@
 package teamtalk.client.handler
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
-import teamtalk.message.Contact
-import teamtalk.message.TextMessage
 import teamtalk.jsonUtil
 import teamtalk.logger.debug
 import teamtalk.logger.log
+import teamtalk.message.Contact
 import teamtalk.message.FileMessage
+import teamtalk.message.TextMessage
 import java.io.*
 import java.net.Socket
 import java.time.Instant
@@ -65,7 +68,13 @@ class ClientHandler(private var chatClient: ChatClient) {
             send(ClientHeader.HELLO.toJSON(chatClient))
 
             while (isConnected()) {
-                process()
+                try {
+                    process()
+                } catch(e: Exception) {
+                    log("Verbindung zum Server getrennt.")
+                    chatClient.getGUI().exit(chatClient.getGUI().primaryStage)
+                    break
+                }
             }
         }
     }

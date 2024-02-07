@@ -7,18 +7,14 @@ import javafx.scene.Scene
 import javafx.scene.chart.PieChart
 import javafx.scene.control.ContextMenu
 import javafx.scene.control.MenuItem
-import javafx.scene.image.WritableImage
 import javafx.scene.input.MouseButton
 import javafx.stage.FileChooser
-import javafx.stage.Stage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
 import teamtalk.server.handler.ServerUser
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.Path
 import javax.imageio.ImageIO
 
 class TriggerWordChart(private val user: ServerUser? = null) : StatisticChart() {
@@ -37,7 +33,7 @@ class TriggerWordChart(private val user: ServerUser? = null) : StatisticChart() 
 
     private val guiScope = CoroutineScope(Dispatchers.JavaFx)
 
-    private val triggerWordsCount = loadTriggerWords()
+    private var triggerWordsCount = loadTriggerWords()
 
     private val triggerWordsChartData = FXCollections.observableArrayList<PieChart.Data>()
     private val triggerWordsChart = create()
@@ -219,6 +215,16 @@ class TriggerWordChart(private val user: ServerUser? = null) : StatisticChart() 
     }
 
     fun getData() = triggerWordsCount.toList()
+
+    fun setData(data: List<Map<String, Int>>) {
+        val list = mutableListOf<MutableMap<String, Int>>()
+        for (map in data) {
+            list.add(map.toMutableMap())
+        }
+
+        this.triggerWordsCount = list.toList()
+        update()
+    }
 
     private fun loadTriggerWords() : List<MutableMap<String, Int>> {
         return listOf(

@@ -2,10 +2,7 @@ package teamtalk.client
 
 import javafx.application.Application
 import javafx.stage.Stage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
 import teamtalk.client.handler.ChatClient
 

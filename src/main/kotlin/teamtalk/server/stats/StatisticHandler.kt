@@ -8,12 +8,11 @@ import teamtalk.message.FileMessage
 import teamtalk.message.Message
 import teamtalk.message.TextMessage
 import teamtalk.server.handler.ChatServer
-import teamtalk.server.handler.ServerUser
 import teamtalk.server.stats.charts.FillWordChart
 import teamtalk.server.stats.charts.StatisticChart
 import teamtalk.server.stats.charts.SummarizedFillWordsChart
 import teamtalk.server.stats.charts.TriggerWordChart
-import kotlin.collections.ArrayDeque
+import java.time.Duration
 
 class StatisticHandler(private val chatServer: ChatServer) {
 
@@ -21,7 +20,7 @@ class StatisticHandler(private val chatServer: ChatServer) {
     private val handlerScope = CoroutineScope(Dispatchers.IO)
 
     val newMessages = ArrayDeque(listOf<Message>())
-    private val processedMessages = mutableListOf<Message>()
+    val processedMessages = mutableListOf<Message>()
 
     val globalCharts = mutableListOf<StatisticChart>()
     private val fillWordGlobalChart = FillWordChart()
@@ -51,20 +50,14 @@ class StatisticHandler(private val chatServer: ChatServer) {
     }
 
     private fun process(message: Message) {
-        val senderName = message.getSenderName()
-        val senderUser = chatServer.getUser(senderName)
+        //Verarbeitung von userbezogenen Statistiken
+        val senderUser = chatServer.getUser(message.getSenderName())
+        val receiverUser = chatServer.getUser(message.getReceiverName())
 
-        val receiverName = message.getReceiverName()
-        val receiverUser = chatServer.getUser(receiverName)
+        receiverUser?.getStats()?.processMessage(message)
+        senderUser?.getStats()?.processMessage(message)
 
-        if (receiverUser != null) {
-            receiverUser.getStats().processMessage(message)
-        }
-
-        if (senderUser != null) {
-            senderUser.getStats().processMessage(message)
-        }
-
+        //Verarbeitung von globalen Statistiken
         when(message) {
             is TextMessage -> {
                 processGlobalFillWords(message.getMessage())
@@ -79,7 +72,16 @@ class StatisticHandler(private val chatServer: ChatServer) {
             }
         }
 
+        //Wortanalyse beendet, Wort wird als "verarbeitet" markiert.
         processedMessages.add(message)
+
+        //Verarbeitung der Antwortzeit
+        if (receiverUser != null) {
+            senderUser?.getStats()?.processAnswerTime(receiverUser)
+        }
+
+        //Anzeige aller gewonnenen Statistiken im Statistiken > Übersicht-Bereich des Server-GUI.
+        chatServer.getGUI().updateQuickStats()
     }
 
     private fun formatMessage(message: String): List<String> {
@@ -92,14 +94,8 @@ class StatisticHandler(private val chatServer: ChatServer) {
         return words
     }
 
-    fun getTotalMessages() = processedMessages.size
-
-    fun getTotalTextMessages() = processedMessages.count() { it is TextMessage }
-
-    fun getTotalFileMessages() = processedMessages.count() { it is FileMessage }
-
     /*
-    Methoden für das globale FillWordChart
+    Methode für das globale FillWordChart
      */
     private fun processGlobalFillWords(message: String) {
         val words = formatMessage(message)
@@ -127,6 +123,44 @@ class StatisticHandler(private val chatServer: ChatServer) {
             }
 
             triggerWordGlobalChart.update()
+        }
+    }
+
+    fun getTotalMessages() = processedMessages.size
+
+    fun getTotalTextMessages() = processedMessages.count() { it is TextMessage }
+
+    fun getTotalFileMessages() = processedMessages.count() { it is FileMessage }
+
+    fun getTotalAvgAnswerTime(): Duration {
+        var totalAvgAnswerTime: Duration = Duration.ZERO
+        var messageCount = 0
+
+        val users = chatServer.getUsers()
+
+        for (index1 in users.indices) {
+            for (index2 in index1 + 1 until users.size) {
+                val user1 = users[index1]
+                val user2 = users[index2]
+
+                val avgTimeUser1ToUser2 = user1.getStats().getAverageAnswerTime(user2)
+                if (avgTimeUser1ToUser2 > Duration.ZERO) {
+                    totalAvgAnswerTime += avgTimeUser1ToUser2
+                    messageCount++
+                }
+
+                val avgTimeUser2ToUser1 = user2.getStats().getAverageAnswerTime(user1)
+                if (avgTimeUser2ToUser1 > Duration.ZERO) {
+                    totalAvgAnswerTime += avgTimeUser2ToUser1
+                    messageCount++
+                }
+            }
+        }
+
+        return if (messageCount > 0) {
+            totalAvgAnswerTime.dividedBy(messageCount.toLong())
+        } else {
+            Duration.ZERO
         }
     }
 }
