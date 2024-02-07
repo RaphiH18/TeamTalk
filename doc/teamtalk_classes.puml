@@ -1,0 +1,92 @@
+@startuml
+title TeamTalk | Klassendiagramm
+
+class Client {
+    main()
+}
+
+class Server {
+    main()
+}
+
+class ClientGUI {
+    --
+    create(chatClient: ChatClient)
+}
+
+class ServerGUI {
+    --
+    create()
+}
+
+class ChatClient {
+    +ChatClient() : Communicable
+    -clientSocket: Socket
+    -clientHandler: ClientHandler
+    -uuid: UUID
+    -username: String
+    --
+    +start()
+    +stop()
+    +getUsername(): String
+    +getHandler(): ClientHandler
+    +getUUID(): UUID
+    +sendMessage(message: String, receiver: ChatClient)
+    +sendFile(file: File, receiver: ChatClient)
+}
+
+class ClientHandler {
+    +ClientHandler(chatClient: ChatClient)
+    -chatClient: ChatClient
+    --
+    +start()
+    +stop()
+    +getClient(): ChatClient
+}
+
+class ChatServer {
+    +ChatServer(IP, PORT) : Communicable
+    -IP: InetAddress
+    -PORT: Int
+    -clients: List<ChatClient>
+    -serverSocket: ServerSocket
+    --
+    +start()
+    +stop()
+    +getServerSocket()
+    +getClients(): List<ChatClient>
+}
+
+class ServerHandler {
+    +ServerHandler(server: ChatServer)
+    --
+    +start(type: HandlerType)
+    +stop()
+    -startBaseHandler()
+    -startClientHandler()
+}
+
+interface Communicable {
+    start()
+    stop()
+}
+
+enum HandlerType {
+    SERVER_BASE
+    SERVER_CLIENT
+    CLIENT
+}
+
+enum ViewType {
+    PRE_VIEW
+    BASE_VIEW
+    CONFIG_VIEW
+}
+
+ChatClient -[dashed]-|> Communicable
+ChatServer -[dashed]-|> Communicable
+ChatServer "0..n" -> ChatClient
+ChatClient -> ClientHandler
+ChatServer -> ServerHandler
+
+@enduml
