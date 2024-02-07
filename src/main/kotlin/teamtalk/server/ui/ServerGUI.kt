@@ -558,7 +558,7 @@ class ServerGUI(private val chatServer: ChatServer) {
             while (isActive) {
                 val duration = Duration.between(startTime, Instant.now())
 
-                currentRuntimeLBL.text = String.format("%02d:%02d:%02d", duration.toHours(), duration.toMinutesPart(), duration.toSecondsPart())
+                currentRuntimeLBL.text = formatDuration(duration)
 
                 delay(1000)
             }
@@ -573,10 +573,11 @@ class ServerGUI(private val chatServer: ChatServer) {
     }
 
     private fun formatDuration(duration: Duration): String {
-        val hours = duration.toHoursPart()
-        val minutes = duration.toMinutesPart()
-        val seconds = duration.toSecondsPart()
+        val seconds = duration.seconds
+        val hours = seconds / 3600
+        val minutes = (seconds % 3600) / 60
+        val secs = seconds % 60
 
-        return String.format("%02d:%02d:%02d", hours, minutes, seconds)
+        return String.format("%02d:%02d:%02d", hours, minutes, secs)
     }
 }

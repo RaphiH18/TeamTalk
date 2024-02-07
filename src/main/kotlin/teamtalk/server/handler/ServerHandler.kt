@@ -47,7 +47,7 @@ class ServerHandler(private val chatServer: ChatServer) {
                         while (!(socket.isClosed)) {
                             try {
                                 process(serverClient)
-                            } catch (e: SocketException) {
+                            } catch (e: Exception) {
                                 val loggedOutUser = chatServer.getUser(serverClient)
 
                                 if (loggedOutUser != null) {

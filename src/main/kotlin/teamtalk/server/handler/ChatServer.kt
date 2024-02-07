@@ -121,6 +121,9 @@ class ChatServer(port: Int) {
 
     private fun loadData() {
         val userDataDir = File("data")
+        println("data-Ordner existiert: ${userDataDir.exists()}")
+        println("data-Ordner ist Ordner: ${userDataDir.isDirectory}")
+        println("Files im data-Ordner: ${userDataDir.listFiles()}")
         if (userDataDir.exists() and userDataDir.isDirectory) {
             val userDataFiles = userDataDir.listFiles()
 

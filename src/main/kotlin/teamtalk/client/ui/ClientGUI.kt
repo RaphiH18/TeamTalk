@@ -1,5 +1,6 @@
 package teamtalk.client.ui
 
+import javafx.application.Platform
 import javafx.collections.FXCollections
 import javafx.geometry.Insets
 import javafx.geometry.Pos
@@ -199,11 +200,13 @@ class ClientGUI(private val chatClient: ChatClient) {
                 dialogPane.lookupButton(ButtonType.CANCEL).setVisible(false)
             }
 
-            val result = userChoice.showAndWait()
-            result.ifPresent { selectedUsername ->
-                chatClient.setUsername(selectedUsername)
-                chatClient.getHandler().send(ClientHeader.LOGIN.toJSON(chatClient))
-                startMainGUI(stage)
+            Platform.runLater {
+                val result = userChoice.showAndWait()
+                result.ifPresent { selectedUsername ->
+                    chatClient.setUsername(selectedUsername)
+                    chatClient.getHandler().send(ClientHeader.LOGIN.toJSON(chatClient))
+                    startMainGUI(stage)
+                }
             }
         }
     }

@@ -57,7 +57,7 @@ tasks {
 }
 
 kotlin {
-    jvmToolchain(19)
+    jvmToolchain(8)
 }
 
 javafx {
