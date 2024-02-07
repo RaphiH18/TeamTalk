@@ -13,11 +13,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
+import teamtalk.server.handler.ChatServer
 import teamtalk.server.handler.ServerUser
 import java.io.File
 import javax.imageio.ImageIO
 
-class TriggerWordChart(private val user: ServerUser? = null) : StatisticChart() {
+class TriggerWordChart(private val chatServer: ChatServer, private val user: ServerUser? = null) : StatisticChart() {
 
     enum class WordCategory {
         POSITIVE, NEUTRAL, NEGATIVE;
@@ -217,12 +218,26 @@ class TriggerWordChart(private val user: ServerUser? = null) : StatisticChart() 
     fun getData() = triggerWordsCount.toList()
 
     fun setData(data: List<Map<String, Int>>) {
-        val list = mutableListOf<MutableMap<String, Int>>()
+        val updatedListOfMaps = mutableListOf<MutableMap<String, Int>>()
+
         for (map in data) {
-            list.add(map.toMutableMap())
+            val updatedMap = mutableMapOf<String, Int>()
+
+            for ((word, count) in map) {
+                if (chatServer.getConfig().fillWordsList.contains(word)) {
+                    updatedMap[word] = count
+                }
+            }
+
+            for (word in chatServer.getConfig().fillWordsList) {
+                updatedMap.putIfAbsent(word, 0)
+            }
+
+            updatedListOfMaps.add(updatedMap)
         }
 
-        this.triggerWordsCount = list.toList()
+        this.triggerWordsCount = updatedListOfMaps.toList()
+
         update()
     }
 

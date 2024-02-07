@@ -4,7 +4,6 @@ import teamtalk.logger.log
 import teamtalk.server.handler.network.ServerClient
 import teamtalk.server.stats.StatisticHandler
 import teamtalk.server.ui.ServerGUI
-import java.io.File
 
 class ChatServer(port: Int) {
 
@@ -13,12 +12,13 @@ class ChatServer(port: Int) {
     private val handler = ServerHandler(this)
     private val stats = StatisticHandler(this)
     private val gui = ServerGUI(this)
+    private val config = ServerConfig(this)
 
     private var IP = "127.0.0.1"
     private var PORT = port
 
     init {
-        loadData()
+        config.load()
     }
 
     fun start() {
@@ -34,12 +34,15 @@ class ChatServer(port: Int) {
 
     fun setIP(newIP: String) {
         IP = newIP
+        gui.ipTF.text = newIP
     }
 
     fun getPort() = PORT
 
     fun setPort(newPort: Int) {
         PORT = newPort
+        gui.currentPortLBL.text = "$newPort"
+        gui.portTF.text = "$newPort"
     }
 
     fun getGUI() = gui
@@ -47,6 +50,8 @@ class ChatServer(port: Int) {
     fun getStats() = stats
 
     fun getHandler() = handler
+
+    fun getConfig() = config
 
     fun getUsers() = users
 
@@ -111,34 +116,5 @@ class ChatServer(port: Int) {
         }
 
         return names
-    }
-
-    fun saveData() {
-        for (user in users) {
-            user.saveData()
-        }
-    }
-
-    private fun loadData() {
-        val userDataDir = File("data")
-        println("data-Ordner existiert: ${userDataDir.exists()}")
-        println("data-Ordner ist Ordner: ${userDataDir.isDirectory}")
-        println("Files im data-Ordner: ${userDataDir.listFiles()}")
-        if (userDataDir.exists() and userDataDir.isDirectory) {
-            val userDataFiles = userDataDir.listFiles()
-
-            if (userDataFiles != null) {
-                for (dataFile in userDataFiles) {
-                    val user = ServerUser(this, dataFile.nameWithoutExtension)
-                    users.add(user)
-                    user.loadData()
-                    stats.loadData(user)
-                    gui.updateUserList(user)
-                }
-
-                stats.updateTotalAverageAnswerTime()
-                gui.updateQuickStats()
-            }
-        }
     }
 }

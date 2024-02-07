@@ -30,7 +30,7 @@ class ServerApp : Application() {
             title = "TeamTalk Server"
 
             setOnCloseRequest {
-                chatServer.saveData()
+                chatServer.getConfig().saveData()
                 exitProcess(0)
             }
 

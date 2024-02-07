@@ -1,0 +1,478 @@
+@startuml
+
+package teamtalk {
+    object logger {
+        +log(message: String)
+        +debug(message: String)
+        +createServerView(): VBox
+    }
+}
+
+package "teamtalk.client" {
+    class Client {
+       +main()
+    }
+
+    class ClientApp {
+        -chatClient: ChatClient
+
+        +start(stage: Stage)
+    }
+}
+
+package "teamtalk.client.handler" {
+    class ChatClient {
+        -handler: ClientHandler
+        -gui: ClientGUI
+        -uuid: UUID
+        -username: String
+
+        +start(server: String, port: Int)
+        +getHandler(): ClientHandler
+        +getGUI(): ClientGUI
+        +isConnected(): Boolean
+        +getServerUsers(): List
+        +getUsername(): String
+        +setUsername(username: String)
+        +getUUID(): UUID
+    }
+
+    class ClientHandler {
+        -chatClient: ChatClient
+        -socket: Socket
+        -input: DataInputStream
+        -output: DataOutputStream
+        -handlerScope: CoroutineScope
+        -mutex: Mutex
+        -messageChannel: Channel<Pair<JSONObject?, ByteArray?>>
+        -status: String
+        -contacts: List<Contact>
+
+        +connect(server: String, port: Int)
+        +process()
+        +send(header: JSONObject, payloadBytes: ByteArray?)
+        +sendHeader(header: JSONObject)
+        +sendPayload(payloadBytes: ByteArray)
+        +isConnected(): Boolean
+        +getStatusMessage(): String
+        +getContacts(): List<Contact>
+    }
+
+    enum ClientHeader {
+        HELLO
+        LOGIN
+        MESSAGE
+        FILE
+        BYE
+
+        +toJSON(chatClient: ChatClient, receiverName: String, payloadSize: Long, filename: String): JSONObject
+    }
+}
+
+package "teamtalk.client.ui" {
+    class ClientGUI {
+        -chatClient: ChatClient
+        -guiScope: CoroutineScope
+        -primaryStage: Stage
+        -defaultIP: String
+        -defaultPort: String
+        -connectBtn: Button
+        -messageOutputLbl: Label
+        -contactList: ListView<String>
+        -sendFileBtn: Button
+        -chosenFileLbl: Label
+        -receivedFilesVBox: VBox
+        -currentUserLbl: Label
+        -currentUser: String
+        -conversationSP: ScrollPane
+        -conversationVB: VBox
+        -conversationTF: TextFlow
+
+        +startConnectionGUI(stage: Stage)
+        +waitForConnected()
+        +startUserselectionGUI(stage: Stage)
+        +startMainGUI(stage: Stage)
+        +exit(stage: Stage)
+        +updateContactStatus(onlineContacts: JSONObject)
+        +updateContactView()
+        +updateMessages(contact: Contact, updateCause: String)
+        +createMenuBar(): MenuBar
+    }
+}
+
+package "teamtalk.server.handler" {
+    class ChatServer {
+        -users: List<ServerUser>
+        -handler: ServerHandler
+        -stats: StatisticHandler
+        -gui: ServerGUI
+        -IP: String
+        -PORT: Int
+
+        +start()
+        +stop()
+        +getIP(): String
+        +setIP(newIP: String)
+        +getPort(): Int
+        +setPort(newPort: Int)
+        +getGUI(): ServerGUI
+        +getStats(): StatisticHandler
+        +getHandler(): ServerHandler
+        +getUsers(): List<ServerUser>
+        +getUser(username: String): ServerUser?
+        +addUser(username: String)
+        +deleteUser(username: String)
+        +getUser(serverClient: ServerClient): ServerUser?
+        +getClients(): List<ServerClient>
+        +getClientNames(): List<String>
+        +getUserNames(): List<String>
+        +saveData()
+        -loadData()
+    }
+
+    class ServerHandler {
+        -chatServer: ChatServer
+        -handlerScope: CoroutineScope
+        -serverSocket: ServerSocket
+        -isRunning: Boolean
+
+        +start()
+        +stop()
+        +isRunning(): Boolean
+        -process(serverClient: ServerClient)
+        -broadcast(header: JSONObject, payloadBytes: ByteArray)
+        +getServer(): ChatServer
+    }
+
+    class ServerUser {
+        -chatServer: ChatServer
+        -username: String
+        -userStats: UserStatistic
+        -serverClient: ServerClient?
+        -loginTime: Instant
+
+        +getName(): String
+        +setName(newName: String)
+        +login(newClient: ServerClient)
+        +getClient(): ServerClient?
+        +logout()
+        +getLoginTime(): Instant
+        +isOnline(): Boolean
+        +getStats(): UserStatistic
+        +getServer(): ChatServer
+        +getIndex(): Int
+        +deleteData()
+        +saveData()
+        +loadData()
+    }
+
+    class UserData {
+        +username: String
+        +sentTextMessages: Int
+        +receivedTextMessages: Int
+        +sentFileMessages: Int
+        +receivedFileMessages: Int
+        +usageTime: Long
+        +answerTime: Map<String, Long>
+        +fillWordStats: Map<String, Int>
+        +triggerWordStats: List<Map<String, Int>>
+    }
+}
+
+package "teamtalk.server.handler.network" {
+    class ServerClient {
+        -socket: Socket
+        -output: DataOutputStream
+        -input: DataInputStream
+
+        +getSocket(): Socket
+        +getOutput(): DataOutputStream
+        +getInput(): DataInputStream
+        +send(header: JSONObject, payloadBytes: ByteArray)
+        +sendHeader(header: JSONObject)
+        +sendPayload(payloadBytes: ByteArray)
+    }
+
+    enum ServerHeader {
+        HELLO_RESPONSE
+        LOGIN_RESPONSE
+        MESSAGE_RESPONSE
+        FILE_RESPONSE
+        STATUS_UPDATE
+
+        +toJSON(serverHandler: ServerHandler, status: String, receiverName: String, senderName: String, payloadSize: Int): JSONObject
+    }
+}
+
+package "teamtalk.message" {
+    class Contact {
+        -username: String
+        -online: Boolean
+        -messages: List<Message>
+        -newMessagesQueue: Deque<Message>
+
+        +addMessage(textMessage: TextMessage)
+        +addMessage(fileMessage: FileMessage)
+        +getMessages(): List<Message>
+        +getNewMessages(): List<Message>
+        +clearNewMessagesQueue()
+        +getUsername(): String
+        +setOnline(online: Boolean)
+        +isOnline(): Boolean
+    }
+
+    abstract class Message {
+        -senderName: String
+        -receiverName: String
+        -timestamp: Instant
+
+        +{abstract} getMessage(): Any
+        +getTimestamp(): Instant
+        +getSenderName(): String
+        +getReceiverName(): String
+    }
+
+    class FileMessage {
+        -file: File
+
+        +getMessage(): File
+    }
+
+    class TextMessage {
+        -messageText: String
+
+        +getMessage(): String
+    }
+}
+
+package "teamtalk.server.stats.charts" {
+    class FillWordChart {
+        -user: ServerUser?
+        -guiScope: CoroutineScope
+        -fillWordsCount: Map<String, Int>
+        -fillWordsChartData: ObservableList<PieChart.Data>
+        -fillWordsChart: PieChart
+        -firstUpdate: Boolean
+
+        +create(): PieChart
+        +update()
+        +copy(): PieChart
+        +save()
+        +getChart(): PieChart
+        +getData(): Map<String, Int>
+        +setData(data: Map<String, Int>)
+        +countIfFillWord(fillWord: String): Boolean
+        +isFillWord(word: String): Boolean
+        -createContextMenu()
+        -loadFillWords(): Map<String, Int>
+    }
+
+    class SummarizedFillWordsChart {
+        -chatServer: ChatServer
+        -guiScope: CoroutineScope
+        -xAxis: CategoryAxis
+        -yAxis: NumberAxis
+        -fillWordsCount: Map<ServerUser, Map<String, Int>>
+        -chart: StackedBarChart<String, Number>
+
+        +create(): StackedBarChart<String, Number>
+        +update()
+        +copy(): StackedBarChart<String, Number>
+        +save()
+        +getData(): Map<ServerUser, Map<String, Int>>
+        +getChart(): StackedBarChart<String, Number>
+        -createContextMenu()
+        -getAllFillWords(): List<String>
+        -createXAxis(): CategoryAxis
+        -createYAxis(): NumberAxis
+    }
+
+    class TriggerWordChart {
+        -user: ServerUser?
+        -guiScope: CoroutineScope
+        -triggerWordsCount: List<Map<String, Int>>
+        -triggerWordsChartData: ObservableList<PieChart.Data>
+        -triggerWordsChart: PieChart
+        -firstUpdate: Boolean
+
+        +create(): PieChart
+        +update()
+        +copy(): PieChart
+        +save()
+        +getChart(): PieChart
+        +getData(): List<Map<String, Int>>
+        +setData(data: List<Map<String, Int>>)
+        +countIfTriggerWord(word: String)
+        +isTriggerWord(word: String): Boolean
+        -createContextMenu()
+        -getCategory(word: String): WordCategory
+        -getCategoryCounts(): Map<WordCategory, Int>
+        -loadTriggerWords(): List<Map<String, Int>>
+    }
+
+    abstract class StatisticChart {
+        +create(): PieChart
+        +update()
+        +getChart(): PieChart
+    }
+}
+
+package "teamtalk.server.stats" {
+    class StatisticHandler {
+        -chatServer: ChatServer
+        -handlerScope: CoroutineScope
+        -newMessages: ArrayDeque<Message>
+        -processedMessages: List<Message>
+        -globalCharts: List<StatisticChart>
+        -fillWordGlobalChart: FillWordChart
+        -triggerWordGlobalChart: TriggerWordChart
+        -detailedCharts: List<StatisticChart>
+        -summarizedFillWordsChart: SummarizedFillWordsChart
+        -totalTextMessages: Int
+        -totalFileMessages: Int
+        -averageAnswerTime: Duration
+
+        +start()
+        +updateTotalAverageAnswerTime()
+        +loadData(user: ServerUser)
+        -process(message: Message)
+        -processGlobalFillWords(message: String)
+        -processGlobalTriggerWords(message: String)
+        -formatMessage(message: String)
+        -loadQuickStats(user: ServerUser)
+        -loadGlobalFillWordsData(user: ServerUser)
+        -loadGlobalTriggerWordsData(user: ServerUser)
+    }
+
+    class UserStatistic {
+        -user: ServerUser
+        -sentTextMessages: Int
+        -receivedTextMessages: Int
+        -sentFileMessages: Int
+        -receivedFileMessages: Int
+        -usageTime: Duration
+        -answerTime: Map<ServerUser, Duration>
+        -charts: List<StatisticChart>
+        -fillWordChart: FillWordChart
+        -triggerWordChart: TriggerWordChart
+
+        +processMessage(message: Message)
+        +updateUsageTime()
+        +getAverageAnswerTime(otherUser: ServerUser): Duration
+        +getAverageAnswerTime(): Duration
+        +getSimpleAnswerTime(): Map<String, Long>
+        +setAnswerTimeSimple(data: Map<String, Long>)
+        -processFillWords(message: String)
+        -processTriggerWords(message: String)
+        -formatMessage(message: String)
+    }
+}
+
+package "teamtalk.server.ui" {
+    class ServerGUI {
+        -chatServer: ChatServer
+        -guiScope: CoroutineScope
+        -MIN_WIDTH: Double
+        -MIN_HEIGHT: Double
+        -statusCIR: Circle
+        -currentStateLBL: Label
+        -startBTN: Button
+        -stopBTN: Button
+        -currentPortLBL: Label
+        -currentRuntimeLBL: Label
+        -totalUsersLBL: Label
+        -onlineUsersLBL: Label
+        -runtimeClock: Job
+        -userListLV: ListView<String>
+        -userNameTF: TextField
+        -deleteUserBTN: Button
+        -portTF: TextField
+        -ipTF: TextField
+        -applyBTN: Button
+        -totalMessages: Label
+        -totalTextMessages: Label
+        -totalFileMessages: Label
+        -totalUsersTagged: Label
+        -averageAnswerTime: Label
+        -averageUsageTime: Label
+        -selectedStatsVB: VBox
+        -detailedStatsMB: MenuButton
+        -controlArea: SplitPane
+
+        +create(): VBox
+        +increaseOnlineUsers()
+        +decreaseOnlineUsers()
+        +updateStatus(status: Boolean)
+        +applySettings()
+        +updateUserList(user: ServerUser)
+        +updateUserList()
+        +updateQuickStats()
+        +startRuntimeClock()
+        +stopRuntimeClock()
+        +formatDuration(duration: Duration): String
+        -createMenuBar(): MenuBar
+        -createContentVB(): VBox
+        -createControlSP(): SplitPane
+        -createControlTbPn(): TabPane
+        -createDashboardTab(): Tab
+        -createSettingsTab(): Tab
+        -createUserMgmtTab(): Tab
+        -createStatisticTbPn(): Node
+        -bar(vararg elements: Menu): MenuBar
+        -menu(text: String, vararg elements: MenuItem): Menu
+        -item(text: String, method: () -> Unit): MenuItem
+        -separator(): SeparatorMenuItem
+        -statusCIR(): Circle
+        -startBTN(): Button
+        -stopBTN(): Button
+        -applyBTN(): Button
+        -selectedStatsVB(): VBox
+        -statsGP(serverUser: ServerUser): GridPane
+        -detailedStatsMB(): MenuButton
+        -summarizedChartsVB(): VBox
+        -userListLV(): ListView<String>
+        -deleteUserBTN(): Button
+        -showUserExistsAlert(): Alert
+        -showUserDeletedAlert(): Alert
+    }
+}
+
+package "teamtalk.server" {
+    class Server {
+        +main()
+    }
+
+    class ServerApp {
+        +start(stage: Stage)
+    }
+}
+
+' Beziehungen
+ClientApp --> ChatClient : Uses
+ChatClient --> ClientHandler : Uses
+ChatClient --> ClientGUI : Uses
+ClientHandler --> ChatClient : Uses
+ServerGUI --> ChatServer : Uses
+ChatServer --> ServerHandler : Uses
+ChatServer --> ServerUser : Contains
+ChatServer --> ServerGUI : Uses
+ChatServer --> StatisticHandler : Uses
+ServerHandler --> ChatServer : Uses
+ServerHandler --> ServerClient : Uses
+ServerUser --> ServerClient : Uses
+ServerUser --> UserStatistic : Uses
+StatisticHandler --> ChatServer : Uses
+StatisticHandler --> ServerUser : Uses
+StatisticHandler --> FillWordChart : Uses
+StatisticHandler --> TriggerWordChart : Uses
+StatisticHandler --> SummarizedFillWordsChart : Uses
+UserStatistic --> ServerUser : Uses
+UserStatistic --> FillWordChart : Uses
+UserStatistic --> TriggerWordChart : Uses
+ServerClient --> JSONObject : Uses
+ClientHandler --> JSONObject : Uses
+ServerHandler --> JSONObject : Uses
+FillWordChart --> ServerUser : Optional
+TriggerWordChart --> ServerUser : Optional
+
+@enduml

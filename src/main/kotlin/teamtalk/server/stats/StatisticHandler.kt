@@ -24,8 +24,8 @@ class StatisticHandler(private val chatServer: ChatServer) {
     val processedMessages = mutableListOf<Message>()
 
     val globalCharts = mutableListOf<StatisticChart>()
-    private val fillWordGlobalChart = FillWordChart()
-    private val triggerWordGlobalChart = TriggerWordChart()
+    private val fillWordGlobalChart = FillWordChart(chatServer)
+    private val triggerWordGlobalChart = TriggerWordChart(chatServer)
 
     val detailedCharts = mutableListOf<StatisticChart>()
     val summarizedFillWordsChart = SummarizedFillWordsChart(chatServer)

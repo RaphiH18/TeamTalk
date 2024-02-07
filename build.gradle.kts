@@ -17,6 +17,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.2.1")
+    implementation("org.apache.commons:commons-configuration2:2.9.0")
+    implementation("org.yaml:snakeyaml:2.2")
     implementation("org.json:json:20231013")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
 }

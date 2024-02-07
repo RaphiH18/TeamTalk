@@ -4,7 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import teamtalk.jsonUtil
+import teamtalk.utilities
 import teamtalk.logger.debug
 import teamtalk.logger.log
 import teamtalk.message.FileMessage
@@ -83,7 +83,7 @@ class ServerHandler(private val chatServer: ChatServer) {
 
         debug("<- Von Client erhalten (Header): $headerString")
 
-        if (jsonUtil.isJSON(headerString)) {
+        if (utilities.isJSON(headerString)) {
             val headerJSON = JSONObject(headerString)
             val payloadSize = headerJSON.getInt("payloadSize")
 

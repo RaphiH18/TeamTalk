@@ -20,8 +20,8 @@ class UserStatistic(private val user: ServerUser) {
     var answerTime = mutableMapOf<ServerUser, Duration>()
 
     val charts = mutableListOf<StatisticChart>()
-    val fillWordChart = FillWordChart(user)
-    val triggerWordChart = TriggerWordChart(user)
+    val fillWordChart = FillWordChart(user.getServer(), user)
+    val triggerWordChart = TriggerWordChart(user.getServer(), user)
 
     init {
         charts.add(fillWordChart)

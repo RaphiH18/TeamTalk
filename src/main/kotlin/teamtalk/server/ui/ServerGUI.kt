@@ -34,7 +34,7 @@ class ServerGUI(private val chatServer: ChatServer) {
     private val currentStateLBL = Label("Der TeamTalk Server ist gestoppt.")
     private var startBTN = startBTN()
     private var stopBTN = stopBTN()
-    private val currentPortLBL = Label("4444")
+    val currentPortLBL = Label("4444")
     private val currentRuntimeLBL = Label("00:00:00")
     private val totalUsersLBL = Label("0")
     private val onlineUsersLBL = Label("0")
@@ -46,8 +46,8 @@ class ServerGUI(private val chatServer: ChatServer) {
     val deleteUserBTN = deleteUserBTN()
 
     //  Globale Variablen/Values für den "Einstellungen"-Tab
-    private val portTF = TextField("4444")
-    private val ipTF = TextField("127.0.0.1")
+    val portTF = TextField("4444")
+    val ipTF = TextField("127.0.0.1")
     private val applyBTN = applyBTN()
 
     // Globale Variablen/Values für den "Globale Statistik"-Tab
@@ -329,6 +329,7 @@ class ServerGUI(private val chatServer: ChatServer) {
         currentPortLBL.text = portTF.text
         chatServer.setPort(portTF.text.toInt())
         chatServer.setIP(ipTF.text)
+        chatServer.getConfig().saveSettings()
         logger.log("Einstellungen übernommen - IP: ${ipTF.text}, Port: ${portTF.text}")
     }
 
@@ -419,15 +420,10 @@ class ServerGUI(private val chatServer: ChatServer) {
                         val selectedUser = chatServer.getUser(user)
 
                         if (selectedUser != null) {
-                            if (selectedUser.isOnline()) {
-                                println("online")
-                                selectedStatsVB.children.clear()
-                                selectedStatsVB.children.add(statsGP(selectedUser))
-                                menuButton.text = buttonText
-                            }
-                        } else {
-                            println("offline")
+                            println("online")
                             selectedStatsVB.children.clear()
+                            selectedStatsVB.children.add(statsGP(selectedUser))
+                            menuButton.text = buttonText
                         }
                     }
                 })
@@ -486,11 +482,9 @@ class ServerGUI(private val chatServer: ChatServer) {
 
         detailedStatsMB.items.add(MenuItem(buttonText).apply {
             setOnAction {
-                if (user.isOnline()) {
-                    selectedStatsVB.children.clear()
-                    selectedStatsVB.children.add(statsGP(user))
-                    detailedStatsMB.text = buttonText
-                }
+                selectedStatsVB.children.clear()
+                selectedStatsVB.children.add(statsGP(user))
+                detailedStatsMB.text = buttonText
             }
         })
 
@@ -518,11 +512,9 @@ class ServerGUI(private val chatServer: ChatServer) {
 
             detailedStatsMB.items.add(MenuItem(buttonText).apply {
                 setOnAction {
-                    if (user.isOnline()) {
-                        selectedStatsVB.children.clear()
-                        selectedStatsVB.children.add(statsGP(user))
-                        detailedStatsMB.text = buttonText
-                    }
+                    selectedStatsVB.children.clear()
+                    selectedStatsVB.children.add(statsGP(user))
+                    detailedStatsMB.text = buttonText
                 }
             })
 

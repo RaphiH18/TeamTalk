@@ -13,11 +13,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
+import teamtalk.server.handler.ChatServer
 import teamtalk.server.handler.ServerUser
 import java.io.File
 import javax.imageio.ImageIO
 
-class FillWordChart(private val user: ServerUser? = null) : StatisticChart() {
+class FillWordChart(private val chatServer: ChatServer, private val user: ServerUser? = null) : StatisticChart() {
 
     private val guiScope = CoroutineScope(Dispatchers.JavaFx)
 
@@ -115,11 +116,29 @@ class FillWordChart(private val user: ServerUser? = null) : StatisticChart() {
     /*
     Interne Logik
      */
-
     fun getData() = fillWordsCount
 
     fun setData(data: Map<String, Int>) {
-        this.fillWordsCount = data.toMutableMap()
+        val newData = data.toMutableMap()
+        val keysToRemove = mutableListOf<String>()
+
+        for ((word, count) in newData) {
+            if (chatServer.getConfig().fillWordsList.contains(word)) {
+                fillWordsCount[word] = count
+            } else {
+                keysToRemove.add(word)
+            }
+        }
+        this.fillWordsCount = newData
+
+        for (word in chatServer.getConfig().fillWordsList) {
+            if (fillWordsCount.containsKey(word).not()) {
+                fillWordsCount[word] = 0
+            }
+        }
+
+        keysToRemove.forEach { newData.remove(it) }
+
         update()
     }
 
