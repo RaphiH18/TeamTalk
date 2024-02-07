@@ -40,6 +40,11 @@ class ServerGUI(private val chatServer: ChatServer) {
     private val onlineUsersLBL = Label("0")
     private lateinit var runtimeClock: Job
 
+    //  Globale Variablen/Values für den "Benutzerverwaltung"-Tab
+    private val userListLV = userListLV()
+    private val userNameTF = TextField()
+    val deleteUserBTN = deleteUserBTN()
+
     //  Globale Variablen/Values für den "Einstellungen"-Tab
     private val portTF = TextField("4444")
     private val ipTF = TextField("127.0.0.1")
@@ -52,7 +57,6 @@ class ServerGUI(private val chatServer: ChatServer) {
     private val totalUsersTagged = Label("0")
     private val averageAnswerTime = Label("0")
     private val averageUsageTime = Label("0")
-
 
     //  Globale Variablen/Values für den "Detaillierte Statistik"-Tab
     private var selectedStatsVB = selectedStatsVB()
@@ -114,6 +118,7 @@ class ServerGUI(private val chatServer: ChatServer) {
 
             with(tabs) {
                 add(createDashboardTab())
+                add(createUserMgmtTab())
                 add(createSettingsTab())
             }
         }
@@ -193,6 +198,43 @@ class ServerGUI(private val chatServer: ChatServer) {
 
         return Tab("Einstellungen").apply {
             content = settingsVB
+            isClosable = false
+        }
+    }
+
+    private fun createUserMgmtTab(): Tab {
+        val userMgmtVB = VBox()
+        userMgmtVB.padding = Insets(10.0)
+        userMgmtVB.spacing = 5.0
+
+        val createUserBTN = Button("Benutzer erstellen").apply {
+            setOnAction {
+                if (chatServer.getUserNames().contains(userNameTF.text)) {
+                    showUserExistsAlert()
+                } else {
+                    chatServer.addUser(userNameTF.text)
+                    userNameTF.text = ""
+                }
+            }
+        }
+
+        userMgmtVB.apply {
+            padding = Insets(10.0)
+            spacing = 5.0
+            children.add(Label("Benutzerliste"))
+            children.add(Separator())
+            children.add(userListLV)
+            children.add(deleteUserBTN)
+            children.add(Label("Benutzer hinzufügen").apply {
+                padding = Insets(20.0, 0.0, 0.0, 0.0)
+            })
+            children.add(Separator())
+            children.add(userNameTF)
+            children.add(createUserBTN)
+        }
+
+        return Tab("Benutzerverwaltung").apply {
+            content = userMgmtVB
             isClosable = false
         }
     }
@@ -403,19 +445,56 @@ class ServerGUI(private val chatServer: ChatServer) {
         }
     }
 
+    private fun userListLV(): ListView<String> {
+        return ListView<String>().apply {
+            prefHeight = 100.0
+        }
+    }
+
+    private fun deleteUserBTN(): Button {
+        return Button("Benutzer löschen").apply {
+            setOnAction {
+                val selectedItem = userListLV.selectionModel.selectedItem
+
+                if (selectedItem != null) {
+                    chatServer.deleteUser(selectedItem)
+                    showUserDeletedAlert()
+                }
+            }
+        }
+    }
+
+    private fun showUserExistsAlert(): Alert {
+        return Alert(Alert.AlertType.ERROR).apply {
+            title = "Warnung"
+            headerText = "Benutzer existiert bereits"
+            showAndWait()
+        }
+    }
+
+    private fun showUserDeletedAlert(): Alert {
+        return Alert(Alert.AlertType.INFORMATION).apply {
+            title = "Hinweis"
+            headerText = "Benutzer erfolgreich gelöscht"
+            contentText = "Die Statistiken werden beim nächsten Neustart der Anwendung aktualisiert."
+            showAndWait()
+        }
+    }
+
     fun updateUserList(user: ServerUser) {
         val buttonText = "Benutzer ${user.getIndex() + 1}"
 
         detailedStatsMB.items.add(MenuItem(buttonText).apply {
             setOnAction {
                 if (user.isOnline()) {
-                    println("online")
                     selectedStatsVB.children.clear()
                     selectedStatsVB.children.add(statsGP(user))
                     detailedStatsMB.text = buttonText
                 }
             }
         })
+
+        userListLV.items.add(user.getName())
 
         for (chart in chatServer.getStats().detailedCharts) {
             chart.update()
@@ -430,14 +509,45 @@ class ServerGUI(private val chatServer: ChatServer) {
         }
     }
 
+    fun updateUserList() {
+        userListLV.items.clear()
+        detailedStatsMB.items.removeIf { detailedStatsMB.items.indexOf(it) > 0 }
+
+        for (user in chatServer.getUsers()) {
+            val buttonText = "Benutzer ${user.getIndex() + 1}"
+
+            detailedStatsMB.items.add(MenuItem(buttonText).apply {
+                setOnAction {
+                    if (user.isOnline()) {
+                        selectedStatsVB.children.clear()
+                        selectedStatsVB.children.add(statsGP(user))
+                        detailedStatsMB.text = buttonText
+                    }
+                }
+            })
+
+            userListLV.items.add(user.getName())
+
+            for (chart in chatServer.getStats().detailedCharts) {
+                chart.update()
+            }
+
+            for (chart in user.getStats().charts) {
+                chart.update()
+            }
+
+            guiScope.launch {
+                totalUsersLBL.text = "${chatServer.getUsers().size}"
+            }
+        }
+    }
+
     fun updateQuickStats() {
-        val user = chatServer.getUser("Raphael Hegi")!!
-        println(formatDuration(user.getStats().getAverageAnswerTime(chatServer.getUser("Lukas Ledergerber")!!)))
         guiScope.launch {
-            totalMessages.text = "${chatServer.getStats().getTotalMessages()}"
-            totalTextMessages.text = "${chatServer.getStats().getTotalTextMessages()}"
-            totalFileMessages.text = "${chatServer.getStats().getTotalFileMessages()}"
-            averageAnswerTime.text = formatDuration(chatServer.getStats().getTotalAvgAnswerTime())
+            totalMessages.text = "${chatServer.getStats().totalTextMessages + chatServer.getStats().totalFileMessages}"
+            totalTextMessages.text = "${chatServer.getStats().totalTextMessages}"
+            totalFileMessages.text = "${chatServer.getStats().totalFileMessages}"
+            averageAnswerTime.text = formatDuration(chatServer.getStats().averageAnswerTime)
         }
     }
 

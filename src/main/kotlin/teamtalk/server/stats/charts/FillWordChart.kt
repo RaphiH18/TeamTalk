@@ -149,8 +149,6 @@ class FillWordChart(private val user: ServerUser? = null) : StatisticChart() {
         }
     }
 
-    fun getFillWordsCount() = fillWordsCount.toMap()
-
     fun countIfFillWord(fillWord: String): Boolean {
         if (isFillWord(fillWord)) {
             val currentCount = fillWordsCount[fillWord] ?: 0

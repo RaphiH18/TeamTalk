@@ -4,13 +4,9 @@ import teamtalk.message.FileMessage
 import teamtalk.message.Message
 import teamtalk.message.TextMessage
 import teamtalk.server.handler.ServerUser
-import teamtalk.server.handler.UserData
 import teamtalk.server.stats.charts.FillWordChart
 import teamtalk.server.stats.charts.StatisticChart
 import teamtalk.server.stats.charts.TriggerWordChart
-import java.beans.XMLDecoder
-import java.beans.XMLEncoder
-import java.io.*
 import java.time.Duration
 import java.time.Instant
 
@@ -153,18 +149,18 @@ class UserStatistic(private val user: ServerUser) {
         return this.answerTime[otherUser] ?: Duration.ZERO
     }
 
-//    private fun toUserData(): UserData {
-//        return UserData(
-//            this.sentTextMessages,
-//            this.receivedTextMessages,
-//            this.sentFileMessages,
-//            this.receivedFileMessages,
-//            this.usageTime.toMillis(),
-//            toSimpleAnswerTime(this.answerTime),
-//            this.fillWordChart.getData(),
-//            this.triggerWordChart.getData(),
-//        )
-//    }
+    fun getAverageAnswerTime(): Duration {
+        var totalAverageAnswerTime = Duration.ZERO
+        for (answerTime in answerTime.values) {
+            totalAverageAnswerTime = totalAverageAnswerTime.plus(answerTime)
+        }
+
+        if (answerTime.size == 0) {
+            return totalAverageAnswerTime
+        } else {
+            return totalAverageAnswerTime.dividedBy(answerTime.values.size.toLong())
+        }
+    }
 
 //    fun getTotalContactAddressing(contact: String): Int {
 //        val addressingTrigger = "@"
@@ -185,50 +181,21 @@ class UserStatistic(private val user: ServerUser) {
 //        return addressingAmount
 //    }
 
-    fun loadData() {
-        val decoder = XMLDecoder(BufferedInputStream(FileInputStream("userdata/${user.getName()}.xml")))
-        val userData = decoder.readObject() as UserData
-
-        this.sentTextMessages = userData.sentTextMessages
-        this.sentFileMessages = userData.sentFileMessages
-        this.receivedTextMessages = userData.receivedTextMessages
-        this.receivedFileMessages = userData.receivedFileMessages
-        this.usageTime = Duration.ofMillis(userData.usageTime)
-        this.answerTime = fromSimpleAnswerTime(userData.answerTime)
-
-        this.fillWordChart.setData(userData.fillWordStats)
-        this.triggerWordChart.setData(userData.triggerWordStats)
-    }
-
-    fun saveToFile() {
-        val directory = File("userdata")
-        if (directory.exists().not()) {
-            directory.mkdirs()
-        }
-
-        val encoder = XMLEncoder(BufferedOutputStream(FileOutputStream("userdata/${user.getName()}.xml")))
-        //encoder.writeObject(toUserData())
-        encoder.close()
-    }
-
-    private fun toSimpleAnswerTime(data: Map<ServerUser, Duration>): Map<String, Long> {
+    fun getSimpleAnswerTime(): Map<String, Long> {
         val map = mutableMapOf<String, Long>()
-        for ((user, duration) in data) {
+        for ((user, duration) in answerTime) {
             map[user.getName()] = duration.toMillis()
         }
 
         return map
     }
 
-    private fun fromSimpleAnswerTime(data: Map<String, Long>): MutableMap<ServerUser, Duration> {
-        val map = mutableMapOf<ServerUser, Duration>()
+    fun setAnswerTimeSimple(data: Map<String, Long>) {
         for ((userName, durationLong) in data) {
             val foundUser = user.getServer().getUser(userName)
             if (foundUser != null) {
-                map[foundUser] = Duration.ofMillis(durationLong)
+                answerTime[foundUser] = Duration.ofMillis(durationLong)
             }
         }
-
-        return map
     }
 }

@@ -1,8 +1,10 @@
 package teamtalk.server.handler
 
+import teamtalk.logger.log
 import teamtalk.server.handler.network.ServerClient
 import teamtalk.server.stats.StatisticHandler
 import teamtalk.server.ui.ServerGUI
+import java.io.File
 
 class ChatServer(port: Int) {
 
@@ -16,9 +18,7 @@ class ChatServer(port: Int) {
     private var PORT = port
 
     init {
-        addUser("Raphael Hegi")
-        addUser("Lukas Ledergerber")
-        addUser("Yannick Meier")
+        loadData()
     }
 
     fun start() {
@@ -46,6 +46,8 @@ class ChatServer(port: Int) {
 
     fun getStats() = stats
 
+    fun getHandler() = handler
+
     fun getUsers() = users
 
     fun getUser(username: String) = users.firstOrNull { it.getName() == username }
@@ -54,6 +56,17 @@ class ChatServer(port: Int) {
         val newUser = ServerUser(this, username)
         users.add(newUser)
         gui.updateUserList(newUser)
+        log("Der Benutzer $username wurde erfolgreich erstellt.")
+    }
+
+    fun deleteUser(username: String) {
+        val user = getUser(username)
+        if (user != null) {
+            user.deleteData()
+            users.remove(user)
+            gui.updateUserList()
+            log("Der Benutzer $username wurde erfolgreicht gelöscht.")
+        }
     }
 
     fun getUser(serverClient: ServerClient): ServerUser? {
@@ -98,5 +111,31 @@ class ChatServer(port: Int) {
         }
 
         return names
+    }
+
+    fun saveData() {
+        for (user in users) {
+            user.saveData()
+        }
+    }
+
+    private fun loadData() {
+        val userDataDir = File("data")
+        if (userDataDir.exists() and userDataDir.isDirectory) {
+            val userDataFiles = userDataDir.listFiles()
+
+            if (userDataFiles != null) {
+                for (dataFile in userDataFiles) {
+                    val user = ServerUser(this, dataFile.nameWithoutExtension)
+                    users.add(user)
+                    user.loadData()
+                    stats.loadData(user)
+                    gui.updateUserList(user)
+                }
+
+                stats.updateTotalAverageAnswerTime()
+                gui.updateQuickStats()
+            }
+        }
     }
 }

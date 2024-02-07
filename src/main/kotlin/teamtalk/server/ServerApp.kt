@@ -29,7 +29,11 @@ class ServerApp : Application() {
 
             title = "TeamTalk Server"
 
-            setOnCloseRequest { exitProcess(0) }
+            setOnCloseRequest {
+                chatServer.saveData()
+                exitProcess(0)
+            }
+
             show()
         }
     }

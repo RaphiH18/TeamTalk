@@ -46,7 +46,7 @@ class SummarizedFillWordsChart(private val chatServer: ChatServer) : StatisticCh
     override fun update() {
         guiScope.launch {
             for ((index, user) in chatServer.getUsers().withIndex()) {
-                fillWordsCount[user] = user.getStats().fillWordChart.getFillWordsCount().toMutableMap()
+                fillWordsCount[user] = user.getStats().fillWordChart.getData().toMutableMap()
 
                 val name = "Benutzer ${index + 1}"
                 if (!(xAxis.categories.contains(name))) {
@@ -118,6 +118,26 @@ class SummarizedFillWordsChart(private val chatServer: ChatServer) : StatisticCh
 
         return copiedChart
     }
+
+    fun getData() = fillWordsCount
+
+//    fun getSimpleData(): Map<String, Map<String, Int>> {
+//        val map = mutableMapOf<String, Map<String, Int>>()
+//        for ((user, fillWordMap) in fillWordsCount) {
+//            map[user.getName()] = fillWordMap
+//        }
+//
+//        return map.toMap()
+//    }
+//
+//    fun setDataSimple(data: Map<String, Map<String, Int>>) {
+//        for ((userName, fillWordMap) in data) {
+//            val foundUser = chatServer.getUser(userName)
+//            if (foundUser != null) {
+//                fillWordsCount[foundUser] = fillWordMap.toMutableMap()
+//            }
+//        }
+//    }
 
     fun save() {
         val fileChooser = FileChooser().apply {

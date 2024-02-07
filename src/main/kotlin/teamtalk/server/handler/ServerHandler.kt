@@ -35,6 +35,7 @@ class ServerHandler(private val chatServer: ChatServer) {
             log("Der Server wurde gestartet (IP: ${chatServer.getIP()}, Port: ${chatServer.getPort()})")
             isRunning = true
             chatServer.getGUI().startRuntimeClock()
+            chatServer.getGUI().deleteUserBTN.isDisable = true
             while (true) {
                 try {
                     val socket = serverSocket.accept()
@@ -52,7 +53,7 @@ class ServerHandler(private val chatServer: ChatServer) {
                                 if (loggedOutUser != null) {
                                     chatServer.getGUI().decreaseOnlineUsers()
                                     loggedOutUser.getStats().updateUsageTime()
-                                    loggedOutUser.getStats().saveToFile()
+                                    loggedOutUser.saveData()
                                     log("Verbindung von ${chatServer.getUser(serverClient)?.getName()} (${serverClient.getSocket().inetAddress.hostAddress}) getrennt.")
                                 } else {
                                     log("Verbindung von ${serverClient.getSocket().inetAddress.hostAddress} getrennt.")
@@ -182,6 +183,7 @@ class ServerHandler(private val chatServer: ChatServer) {
             if (user.isOnline()) {
                 try {
                     user.logout()
+                    user.saveData()
                 } catch (e: Exception) {
                     log("Fehler beim Schliessen der Client-Verbindung: ${e.message}")
                 }
@@ -193,6 +195,7 @@ class ServerHandler(private val chatServer: ChatServer) {
             chatServer.getGUI().stopRuntimeClock()
         } catch (e: Exception) {
             log("Fehler beim Schliessen des ServerSockets: ${e.message}")
+            e.printStackTrace()
         }
     }
 

@@ -8,6 +8,7 @@ import teamtalk.message.FileMessage
 import teamtalk.message.Message
 import teamtalk.message.TextMessage
 import teamtalk.server.handler.ChatServer
+import teamtalk.server.handler.ServerUser
 import teamtalk.server.stats.charts.FillWordChart
 import teamtalk.server.stats.charts.StatisticChart
 import teamtalk.server.stats.charts.SummarizedFillWordsChart
@@ -27,7 +28,11 @@ class StatisticHandler(private val chatServer: ChatServer) {
     private val triggerWordGlobalChart = TriggerWordChart()
 
     val detailedCharts = mutableListOf<StatisticChart>()
-    private val summarizedFillWordsChart = SummarizedFillWordsChart(chatServer)
+    val summarizedFillWordsChart = SummarizedFillWordsChart(chatServer)
+
+    var totalTextMessages = 0
+    var totalFileMessages = 0
+    var averageAnswerTime = Duration.ZERO
 
     init {
         globalCharts.add(fillWordGlobalChart)
@@ -63,9 +68,11 @@ class StatisticHandler(private val chatServer: ChatServer) {
                 processGlobalFillWords(message.getMessage())
                 processGlobalTriggerWords(message.getMessage())
                 summarizedFillWordsChart.update()
+                totalTextMessages++
             }
 
             is FileMessage -> {
+                totalFileMessages++
                 /*
                 TODO: Verarbeitung von FileMessages
                  */
@@ -79,6 +86,9 @@ class StatisticHandler(private val chatServer: ChatServer) {
         if (receiverUser != null) {
             senderUser?.getStats()?.processAnswerTime(receiverUser)
         }
+
+        //Aktualisierung der durchschnittlichen globalen Nutzungszeit
+        updateTotalAverageAnswerTime()
 
         //Anzeige aller gewonnenen Statistiken im Statistiken > Übersicht-Bereich des Server-GUI.
         chatServer.getGUI().updateQuickStats()
@@ -126,13 +136,7 @@ class StatisticHandler(private val chatServer: ChatServer) {
         }
     }
 
-    fun getTotalMessages() = processedMessages.size
-
-    fun getTotalTextMessages() = processedMessages.count() { it is TextMessage }
-
-    fun getTotalFileMessages() = processedMessages.count() { it is FileMessage }
-
-    fun getTotalAvgAnswerTime(): Duration {
+    fun updateTotalAverageAnswerTime() {
         var totalAvgAnswerTime: Duration = Duration.ZERO
         var messageCount = 0
 
@@ -157,10 +161,61 @@ class StatisticHandler(private val chatServer: ChatServer) {
             }
         }
 
-        return if (messageCount > 0) {
-            totalAvgAnswerTime.dividedBy(messageCount.toLong())
+        if (messageCount > 0) {
+            averageAnswerTime = totalAvgAnswerTime.dividedBy(messageCount.toLong())
         } else {
-            Duration.ZERO
+            averageAnswerTime = Duration.ZERO
         }
+    }
+
+    fun loadData(user: ServerUser) {
+        loadGlobalFillWordsData(user)
+        loadGlobalTriggerWordsData(user)
+        loadQuickStats(user)
+    }
+
+    private fun loadQuickStats(user: ServerUser) {
+        this.totalTextMessages += user.getStats().sentTextMessages
+        this.totalFileMessages += user.getStats().sentFileMessages
+        this.averageAnswerTime += user.getStats().getAverageAnswerTime()
+        this.averageAnswerTime = this.averageAnswerTime.dividedBy(2L)
+    }
+
+    private fun loadGlobalFillWordsData(user: ServerUser) {
+        val newData = mutableMapOf<String, Int>()
+
+        for ((word, count) in user.getStats().fillWordChart.getData()) {
+            val currentWordData = fillWordGlobalChart.getData()[word]
+
+            if (currentWordData != null) {
+                newData[word] = currentWordData + count
+            } else {
+                newData[word] = count
+            }
+        }
+
+        fillWordGlobalChart.setData(newData)
+    }
+
+    private fun loadGlobalTriggerWordsData(user: ServerUser) {
+        val newData = mutableListOf<Map<String, Int>>()
+
+        for (map in user.getStats().triggerWordChart.getData()) {
+            val newMap = mutableMapOf<String, Int>()
+
+            for ((word, count) in map) {
+                val currentWordData = map[word]
+
+                if (currentWordData != null) {
+                    newMap[word] = currentWordData + count
+                } else {
+                    newMap[word] = count
+                }
+            }
+
+            newData.add(map)
+        }
+
+        triggerWordGlobalChart.setData(newData)
     }
 }
