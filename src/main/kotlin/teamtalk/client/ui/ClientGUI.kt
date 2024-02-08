@@ -190,7 +190,6 @@ class ClientGUI(private val chatClient: ChatClient) {
                         usernameList.add(user.getUsername())
                     }
                 }
-                println(usernameList)
                 userChoice = ChoiceDialog(usernameList[0], usernameList)
             }
             with(userChoice) {
@@ -317,6 +316,7 @@ class ClientGUI(private val chatClient: ChatClient) {
         val inputChatTa = TextArea("Schreiben...").apply {
             prefHeight = 100.0
             prefWidth = 280.0
+            isWrapText = true
         }
 
         val inputChatVb = VBox().apply {
@@ -504,11 +504,6 @@ class ClientGUI(private val chatClient: ChatClient) {
         guiScope.launch {
             val messages = contact.getMessages()
 
-            println("**********************")
-            println("Updating GUI for contact: ${contact.getUsername()}")
-            println("Currently selected chat: $currentUser")
-            println("Updating reason: $updateCause")
-
             if (contact.getUsername() == currentUser) {
                 when (updateCause) {
                     "GUI_CLICK" -> {
@@ -540,10 +535,19 @@ class ClientGUI(private val chatClient: ChatClient) {
                     val timestampText = Text("${message.getTimestamp().toFormattedString()}\n").apply {
                         style = "-fx-font-size: 11px;"
                     }
-                    val senderNameText = Text("${message.getSenderName()}: ").apply {
-                        style = "-fx-font-weight: bold;"
+                    var senderNameText = Text()
+                    if (message.getSenderName() == chatClient.getUsername()) {
+                        senderNameText = Text("${message.getSenderName()}: ").apply {
+                            style = "-fx-font-weight: bold; -fx-fill: green;"
+                        }
+                    } else {
+                        senderNameText = Text("${message.getSenderName()}: ").apply {
+                            style = "-fx-font-weight: bold; -fx-fill: blue;"
+                        }
                     }
+
                     val messageText = Text("${message.getMessage()}\n\n")
+                    conversationTF.maxWidth = 270.0
                     conversationTF.children.addAll(timestampText, senderNameText, messageText)
 
                     delay(100)

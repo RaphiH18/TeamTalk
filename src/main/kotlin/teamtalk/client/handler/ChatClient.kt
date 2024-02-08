@@ -8,7 +8,6 @@ class ChatClient {
     private val handler = ClientHandler(this)
     private val gui = ClientGUI(this)
 
-    private val uuid: UUID = UUID.randomUUID()
     private var username: String = ""
 
     fun start(server: String, port: Int) {
@@ -28,6 +27,4 @@ class ChatClient {
     fun setUsername(username: String) {
         this.username = username
     }
-
-    fun getUUID() = uuid
 }

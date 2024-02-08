@@ -91,7 +91,6 @@ class SummarizedFillWordsChart(private val chatServer: ChatServer) : StatisticCh
                 }
                 */
             }
-            println(xAxis.categories)
         }
     }
 

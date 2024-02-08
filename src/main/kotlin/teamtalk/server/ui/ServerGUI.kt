@@ -13,7 +13,7 @@ import javafx.scene.paint.Color.GREEN
 import javafx.scene.shape.Circle
 import kotlinx.coroutines.*
 import kotlinx.coroutines.javafx.JavaFx
-import teamtalk.logger
+import teamtalk.server.serverLogger
 import teamtalk.server.handler.ChatServer
 import teamtalk.server.handler.ServerUser
 import java.time.Duration
@@ -95,7 +95,7 @@ class ServerGUI(private val chatServer: ChatServer) {
             padding = Insets(10.0)
 
             children.add(controlArea)
-            children.add(logger.createServerView())
+            children.add(serverLogger.createServerView())
 
             VBox.setVgrow(this, Priority.ALWAYS)
         }
@@ -212,8 +212,10 @@ class ServerGUI(private val chatServer: ChatServer) {
                 if (chatServer.getUserNames().contains(userNameTF.text)) {
                     showUserExistsAlert()
                 } else {
-                    chatServer.addUser(userNameTF.text)
-                    userNameTF.text = ""
+                    if (userNameTF.text != "") {
+                        chatServer.addUser(userNameTF.text)
+                        userNameTF.text = ""
+                    }
                 }
             }
         }
@@ -259,8 +261,8 @@ class ServerGUI(private val chatServer: ChatServer) {
             add(Label("Total versendete Textnachrichten:"), 0, 1)
             add(Label("Total versendete Dateien:"), 0, 2)
             add(Label("Total getaggte Benutzer:"), 0, 3)
-            add(Label("Durchschnittliche Antwortzeit:"), 0, 4)
-            add(Label("Durchschnittliche Nutzungszeit:"), 0, 5)
+            add(Label("Durchschnittliche Antwortzeit pro Benutzer:"), 0, 4)
+            add(Label("Durchschnittliche Nutzungszeit pro Benutzer:"), 0, 5)
 
             add(totalMessages, 1,0 )
             add(totalTextMessages, 1, 1)
@@ -283,10 +285,10 @@ class ServerGUI(private val chatServer: ChatServer) {
         }
 
         val detailedStatisticVB = VBox().apply {
-            padding = Insets(10.0)
             spacing = 10.0
             children.add(HBox().apply {
                 spacing = 10.0
+                padding = Insets(10.0)
                 alignment = Pos.CENTER_LEFT
 
                 children.add(Label("Statistiken anzeigen für:"))
@@ -330,7 +332,7 @@ class ServerGUI(private val chatServer: ChatServer) {
         chatServer.setPort(portTF.text.toInt())
         chatServer.setIP(ipTF.text)
         chatServer.getConfig().saveSettings()
-        logger.log("Einstellungen übernommen - IP: ${ipTF.text}, Port: ${portTF.text}")
+        serverLogger.log("Einstellungen übernommen - IP: ${ipTF.text}, Port: ${portTF.text}")
     }
 
     /*
@@ -385,17 +387,54 @@ class ServerGUI(private val chatServer: ChatServer) {
     }
 
     private fun selectedStatsVB() = VBox().apply {
-        children.add(Label("Bitte wähle eine Ansicht aus."))
+        children.add(Label("Bitte wähle eine Ansicht aus.").apply {
+            padding = Insets(10.0)
+        })
     }
 
-    private fun statsGP(serverUser: ServerUser) = GridPane().apply {
-        val userCharts = serverUser.getStats().charts
+    private fun statsSP(serverUser: ServerUser): ScrollPane {
+        val chartsGP = GridPane().apply {
+            padding = Insets(0.0, 0.0, 20.0, 0.0)
+            val userCharts = serverUser.getStats().charts
 
-        for (i in 0..(userCharts.size - 1)) {
-            val columnIndex = i % 2
-            val rowIndex = i / 2
+            for (i in 0..(userCharts.size - 1)) {
+                val columnIndex = i % 2
+                val rowIndex = i / 2
 
-            add(userCharts[i].getChart(), columnIndex, rowIndex)
+                add(userCharts[i].getChart(), columnIndex, rowIndex)
+            }
+        }
+
+        val quickStatsGP = GridPane().apply {
+            padding = Insets(20.0, 0.0, 0.0, 0.0)
+            vgap = 3.0
+            hgap = 30.0
+
+            add(Label("Total versendete Nachrichten:"), 0, 0)
+            add(Label("Total versendete Textnachrichten:"), 0, 1)
+            add(Label("Total versendete Dateien:"), 0, 2)
+            add(Label("Total getaggte Benutzer:"), 0, 3)
+            add(Label("Totale Nutzungszeit:"), 0, 4)
+            add(Label("Durchschnittliche Antwortzeit:"), 0, 5)
+
+            add(serverUser.getStats().totalMessagesLBL, 1, 0)
+            add(serverUser.getStats().totalTextMessagesLBL, 1, 1)
+            add(serverUser.getStats().totalFileMessagesLBL, 1, 2)
+            add(serverUser.getStats().totalUsersTaggedLBL, 1, 3)
+            add(serverUser.getStats().totalUsageTimeLBL, 1, 4)
+            add(serverUser.getStats().averageAnswerTimeLBL, 1, 5)
+        }
+
+        val userstatsVB = VBox().apply {
+            padding = Insets(10.0)
+            children.add(chartsGP)
+            children.add(Separator())
+            children.add(quickStatsGP)
+        }
+
+        return ScrollPane().apply {
+            isFitToWidth = true
+            content = userstatsVB
         }
     }
 
@@ -420,9 +459,8 @@ class ServerGUI(private val chatServer: ChatServer) {
                         val selectedUser = chatServer.getUser(user)
 
                         if (selectedUser != null) {
-                            println("online")
                             selectedStatsVB.children.clear()
-                            selectedStatsVB.children.add(statsGP(selectedUser))
+                            selectedStatsVB.children.add(statsSP(selectedUser))
                             menuButton.text = buttonText
                         }
                     }
@@ -483,7 +521,7 @@ class ServerGUI(private val chatServer: ChatServer) {
         detailedStatsMB.items.add(MenuItem(buttonText).apply {
             setOnAction {
                 selectedStatsVB.children.clear()
-                selectedStatsVB.children.add(statsGP(user))
+                selectedStatsVB.children.add(statsSP(user))
                 detailedStatsMB.text = buttonText
             }
         })
@@ -513,7 +551,7 @@ class ServerGUI(private val chatServer: ChatServer) {
             detailedStatsMB.items.add(MenuItem(buttonText).apply {
                 setOnAction {
                     selectedStatsVB.children.clear()
-                    selectedStatsVB.children.add(statsGP(user))
+                    selectedStatsVB.children.add(statsSP(user))
                     detailedStatsMB.text = buttonText
                 }
             })
@@ -540,6 +578,7 @@ class ServerGUI(private val chatServer: ChatServer) {
             totalTextMessages.text = "${chatServer.getStats().totalTextMessages}"
             totalFileMessages.text = "${chatServer.getStats().totalFileMessages}"
             averageAnswerTime.text = formatDuration(chatServer.getStats().averageAnswerTime)
+            averageUsageTime.text = formatDuration(chatServer.getStats().averageUsageTime)
         }
     }
 

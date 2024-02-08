@@ -8,9 +8,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
+import teamtalk.client.clientLogger.debug
+import teamtalk.client.clientLogger.log
 import teamtalk.utilities
-import teamtalk.logger.debug
-import teamtalk.logger.log
 import teamtalk.message.Contact
 import teamtalk.message.FileMessage
 import teamtalk.message.TextMessage
@@ -30,13 +30,19 @@ class ClientHandler(private var chatClient: ChatClient) {
 
     private var status = "Bereit"
 
-    /*
+    /**
     In der "contacts"-Liste des Clients werden beim HELLO-Prozess alle User, die auf dem Server existieren (egal ob on- oder offline) hinzugefügt.
     Jedes "Contact"-Objekt besitzt einen Online-Status (Boolean), der durch den STATUS_UPDATE-Prozess aktualisiert wird.
     Das GUI zeigt in der Kontakt-Liste jedoch nur die Kontakte an, die Online sind.
      */
     private val contacts = mutableListOf<Contact>()
 
+    /**
+     * Stellt eine Verbindung zum Server her und verarbeitet eingehende Nachrichten.
+     *
+     * @param server Die Adresse des Servers.
+     * @param port Der Port des Servers.
+     */
     fun connect(server: String, port: Int) {
         var timeoutCounter = 0
         val connectionLimit = 10
@@ -176,7 +182,7 @@ class ClientHandler(private var chatClient: ChatClient) {
         }
     }
 
-    /*
+    /**
     Die Methode kann für Textnachrichten sowie auch für Dateien verwendet werden.
     Sie setzt voraus, dass ein Header und Nutzdaten existieren, welche dann via DataOutputStream über den Socket gesendet werden.
 
@@ -184,6 +190,13 @@ class ClientHandler(private var chatClient: ChatClient) {
     Er kann mithilfe der ClientMessage für alle Nachrichten, die der Client senden muss, zusammengestellt werden.
 
     Die Nutzdaten werden direkt als ByteArray über den Socket gesendet.
+     */
+
+    /**
+     * Sendet eine Nachricht an den Server.
+     *
+     * @param header Der JSON-Header der Nachricht.
+     * @param payloadBytes Die Nutzdaten der Nachricht als Byte-Array.
      */
     fun send(header: JSONObject?, payloadBytes: ByteArray? = byteArrayOf()) {
         handlerScope.launch {
@@ -197,6 +210,12 @@ class ClientHandler(private var chatClient: ChatClient) {
         }
     }
 
+    /**
+     * Sendet einen Header an den Server.
+     * Die getrennte Übermittlung von Header und Nutzdaten wird für die Dateiübertragung verwendet.
+     *
+     * @param header Der JSON-Header der Nachricht.
+     */
     suspend fun sendHeader(header: JSONObject) {
         if (isConnected()) {
             val headerBytes = header.toString().toByteArray(Charsets.UTF_8)
@@ -215,6 +234,12 @@ class ClientHandler(private var chatClient: ChatClient) {
         }
     }
 
+    /**
+     * Sendet nur Nutzdaten an den Server.
+     * Die getrennte Übermittlung von Header und Nutzdaten wird für die Dateiübertragung verwendet.
+     *
+     * @param header Der JSON-Header der Nachricht.
+     */
     suspend fun sendPayload(payloadBytes: ByteArray = byteArrayOf()) {
         if (isConnected()) {
             if (payloadBytes.isNotEmpty()) {
@@ -232,7 +257,13 @@ class ClientHandler(private var chatClient: ChatClient) {
 
     fun isConnected() = ((::socket.isInitialized && socket.isConnected))
 
+    /**
+     * @return Status-Nachricht, welche im Verbindungsfenster des GUIs angezeigt wird.
+     */
     fun getStatusMessage() = status
 
+    /**
+     * @return Alle Kontakte, welche der ChatClient kontaktieren kann.
+     */
     fun getContacts() = contacts
 }

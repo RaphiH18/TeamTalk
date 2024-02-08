@@ -95,7 +95,7 @@ class ServerUser(private val chatServer: ChatServer, private var username: Strin
             this.userStats.sentFileMessages = userData.sentFileMessages
             this.userStats.receivedFileMessages = userData.receivedFileMessages
             this.userStats.usageTime = Duration.ofMillis(userData.usageTime)
-            this.userStats.setAnswerTimeSimple(userData.answerTime)
+            this.userStats.setFromSimpleAnswerTime(userData.answerTime)
             userStats.fillWordChart.setData(userData.fillWordStats)
             userStats.triggerWordChart.setData(userData.triggerWordStats)
         }

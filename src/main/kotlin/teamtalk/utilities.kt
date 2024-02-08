@@ -59,6 +59,7 @@ object utilities {
         val yamlConfig = YAMLConfiguration()
         yamlConfig.addProperty("server.ip", "127.0.0.1")
         yamlConfig.addProperty("server.port", 4444)
+        yamlConfig.addProperty("server.debug", false)
         yamlConfig.addProperty("stats.fillwords", defaultFillWords())
         yamlConfig.addProperty("stats.triggerwords.positive", defaultPositiveTriggerWords())
         yamlConfig.addProperty("stats.triggerwords.neutral", defaultNeutralTriggerWords())

@@ -5,8 +5,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import teamtalk.utilities
-import teamtalk.logger.debug
-import teamtalk.logger.log
+import teamtalk.server.serverLogger.debug
+import teamtalk.server.serverLogger.log
 import teamtalk.message.FileMessage
 import teamtalk.message.TextMessage
 import teamtalk.server.handler.network.ServerClient
@@ -54,6 +54,10 @@ class ServerHandler(private val chatServer: ChatServer) {
                                     chatServer.getGUI().decreaseOnlineUsers()
                                     loggedOutUser.getStats().updateUsageTime()
                                     loggedOutUser.saveData()
+                                    chatServer.getUsers().remove(loggedOutUser)
+                                    chatServer.getStats().updateTotalAverageUsageTime()
+                                    chatServer.getGUI().updateQuickStats()
+                                    broadcast(ServerHeader.STATUS_UPDATE.toJSON(this@ServerHandler))
                                     log("Verbindung von ${chatServer.getUser(serverClient)?.getName()} (${serverClient.getSocket().inetAddress.hostAddress}) getrennt.")
                                 } else {
                                     log("Verbindung von ${serverClient.getSocket().inetAddress.hostAddress} getrennt.")
@@ -74,9 +78,7 @@ class ServerHandler(private val chatServer: ChatServer) {
     }
 
     private fun process(serverClient: ServerClient) {
-        println("Ready for next message")
         val headerSize = serverClient.getInput().readInt()
-        println("Angekündigte Headersize: $headerSize")
         val headerBytes = ByteArray(headerSize)
         serverClient.getInput().readFully(headerBytes)
         val headerString = String(headerBytes, Charsets.UTF_8)
@@ -95,7 +97,6 @@ class ServerHandler(private val chatServer: ChatServer) {
                 "LOGIN" -> {
                     val username = headerJSON.get("username").toString()
                     val user = chatServer.getUser(username)
-                    println("Login Request erhalten für: ${user?.getName()}")
 
                     if (user != null) {
                         user.login(serverClient)
@@ -193,6 +194,7 @@ class ServerHandler(private val chatServer: ChatServer) {
         try {
             serverSocket.close()
             chatServer.getGUI().stopRuntimeClock()
+            chatServer.getGUI().deleteUserBTN.isDisable = false
         } catch (e: Exception) {
             log("Fehler beim Schliessen des ServerSockets: ${e.message}")
             e.printStackTrace()

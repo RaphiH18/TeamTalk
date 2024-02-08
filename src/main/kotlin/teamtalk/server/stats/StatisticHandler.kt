@@ -21,7 +21,7 @@ class StatisticHandler(private val chatServer: ChatServer) {
     private val handlerScope = CoroutineScope(Dispatchers.IO)
 
     val newMessages = ArrayDeque(listOf<Message>())
-    val processedMessages = mutableListOf<Message>()
+    val messages = mutableListOf<Message>()
 
     val globalCharts = mutableListOf<StatisticChart>()
     private val fillWordGlobalChart = FillWordChart(chatServer)
@@ -33,6 +33,7 @@ class StatisticHandler(private val chatServer: ChatServer) {
     var totalTextMessages = 0
     var totalFileMessages = 0
     var averageAnswerTime = Duration.ZERO
+    var averageUsageTime = Duration.ZERO
 
     init {
         globalCharts.add(fillWordGlobalChart)
@@ -55,6 +56,8 @@ class StatisticHandler(private val chatServer: ChatServer) {
     }
 
     private fun process(message: Message) {
+        messages.add(message)
+
         //Verarbeitung von userbezogenen Statistiken
         val senderUser = chatServer.getUser(message.getSenderName())
         val receiverUser = chatServer.getUser(message.getReceiverName())
@@ -77,14 +80,6 @@ class StatisticHandler(private val chatServer: ChatServer) {
                 TODO: Verarbeitung von FileMessages
                  */
             }
-        }
-
-        //Wortanalyse beendet, Wort wird als "verarbeitet" markiert.
-        processedMessages.add(message)
-
-        //Verarbeitung der Antwortzeit
-        if (receiverUser != null) {
-            senderUser?.getStats()?.processAnswerTime(receiverUser)
         }
 
         //Aktualisierung der durchschnittlichen globalen Nutzungszeit
@@ -137,35 +132,23 @@ class StatisticHandler(private val chatServer: ChatServer) {
     }
 
     fun updateTotalAverageAnswerTime() {
-        var totalAvgAnswerTime: Duration = Duration.ZERO
-        var messageCount = 0
+        var totalAnswerTime = Duration.ZERO
 
-        val users = chatServer.getUsers()
-
-        for (index1 in users.indices) {
-            for (index2 in index1 + 1 until users.size) {
-                val user1 = users[index1]
-                val user2 = users[index2]
-
-                val avgTimeUser1ToUser2 = user1.getStats().getAverageAnswerTime(user2)
-                if (avgTimeUser1ToUser2 > Duration.ZERO) {
-                    totalAvgAnswerTime += avgTimeUser1ToUser2
-                    messageCount++
-                }
-
-                val avgTimeUser2ToUser1 = user2.getStats().getAverageAnswerTime(user1)
-                if (avgTimeUser2ToUser1 > Duration.ZERO) {
-                    totalAvgAnswerTime += avgTimeUser2ToUser1
-                    messageCount++
-                }
-            }
+        for (user in chatServer.getUsers()) {
+            totalAnswerTime = totalAnswerTime.plus(user.getStats().getTotalAnswerTime())
         }
 
-        if (messageCount > 0) {
-            averageAnswerTime = totalAvgAnswerTime.dividedBy(messageCount.toLong())
-        } else {
-            averageAnswerTime = Duration.ZERO
+        averageAnswerTime = totalAnswerTime.dividedBy(chatServer.getUsers().size.toLong())
+    }
+
+    fun updateTotalAverageUsageTime() {
+        var totalUsageTime = Duration.ZERO
+
+        for (user in chatServer.getUsers()) {
+            totalUsageTime = totalUsageTime.plus(user.getStats().usageTime)
         }
+
+        averageUsageTime = totalUsageTime.dividedBy(chatServer.getUsers().size.toLong())
     }
 
     fun loadData(user: ServerUser) {
@@ -177,8 +160,6 @@ class StatisticHandler(private val chatServer: ChatServer) {
     private fun loadQuickStats(user: ServerUser) {
         this.totalTextMessages += user.getStats().sentTextMessages
         this.totalFileMessages += user.getStats().sentFileMessages
-        this.averageAnswerTime += user.getStats().getAverageAnswerTime()
-        this.averageAnswerTime = this.averageAnswerTime.dividedBy(2L)
     }
 
     private fun loadGlobalFillWordsData(user: ServerUser) {

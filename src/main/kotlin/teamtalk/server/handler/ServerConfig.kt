@@ -1,6 +1,7 @@
 package teamtalk.server.handler
 
 import org.apache.commons.configuration2.YAMLConfiguration
+import teamtalk.server.serverLogger
 import teamtalk.utilities
 import java.io.File
 import java.io.FileReader
@@ -32,8 +33,9 @@ class ServerConfig(private val chatServer: ChatServer) {
 
     fun load() {
         loadConfig(File(DEFAULT_CONFIG_PATH))
+        loadLogs(File(serverLogger.DEFAULT_LOG_PATH))
 
-        val userDataDir = File("data")
+        val userDataDir = File(DEFAULT_USERDATA_PATH)
         if (userDataDir.exists() and userDataDir.isDirectory) {
             val userDataFiles = userDataDir.listFiles()
 
@@ -41,13 +43,32 @@ class ServerConfig(private val chatServer: ChatServer) {
                 for (dataFile in userDataFiles) {
                     val user = ServerUser(chatServer, dataFile.nameWithoutExtension)
                     user.loadData()
+                    user.getStats().updateGUI()
                     chatServer.getUsers().add(user)
                     chatServer.getStats().loadData(user)
                     chatServer.getGUI().updateUserList(user)
                 }
 
                 chatServer.getStats().updateTotalAverageAnswerTime()
+                chatServer.getStats().updateTotalAverageUsageTime()
                 chatServer.getGUI().updateQuickStats()
+            }
+        }
+    }
+
+    fun loadLogs(file: File) {
+        if (file.parentFile.exists().not()) {
+            file.parentFile.mkdirs()
+        }
+
+        if (file.exists().not()) {
+            file.createNewFile()
+            return
+        }
+
+        file.useLines {
+            for (line in it) {
+                serverLogger.logPane.appendText("${line}\n")
             }
         }
     }
@@ -73,5 +94,6 @@ class ServerConfig(private val chatServer: ChatServer) {
         triggerWordsList.addAll(configFile.getList("stats.triggerwords.negative") as List<String>)
         chatServer.setIP(configFile.getString("server.ip"))
         chatServer.setPort(configFile.getInt("server.port"))
+        serverLogger.DEBUG = configFile.getBoolean("server.debug")
     }
 }

@@ -224,12 +224,12 @@ class TriggerWordChart(private val chatServer: ChatServer, private val user: Ser
             val updatedMap = mutableMapOf<String, Int>()
 
             for ((word, count) in map) {
-                if (chatServer.getConfig().fillWordsList.contains(word)) {
+                if (chatServer.getConfig().triggerWordsList.contains(word)) {
                     updatedMap[word] = count
                 }
             }
 
-            for (word in chatServer.getConfig().fillWordsList) {
+            for (word in chatServer.getConfig().triggerWordsList) {
                 updatedMap.putIfAbsent(word, 0)
             }
 
@@ -237,7 +237,6 @@ class TriggerWordChart(private val chatServer: ChatServer, private val user: Ser
         }
 
         this.triggerWordsCount = updatedListOfMaps.toList()
-
         update()
     }
 

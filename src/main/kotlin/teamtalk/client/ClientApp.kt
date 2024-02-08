@@ -20,5 +20,8 @@ class ClientApp : Application() {
             delay(100)
             chatClient.getGUI().startUserselectionGUI(stage)
         }
+
+        stage.maxWidth = 800.0
+        stage.maxHeight = 635.0
     }
 }

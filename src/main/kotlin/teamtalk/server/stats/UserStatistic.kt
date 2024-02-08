@@ -1,5 +1,6 @@
 package teamtalk.server.stats
 
+import javafx.scene.control.Label
 import teamtalk.message.FileMessage
 import teamtalk.message.Message
 import teamtalk.message.TextMessage
@@ -13,11 +14,20 @@ import java.time.Instant
 class UserStatistic(private val user: ServerUser) {
 
     var sentTextMessages = 0
-    var receivedTextMessages = 0
     var sentFileMessages = 0
+    var receivedTextMessages = 0
     var receivedFileMessages = 0
     var usageTime = Duration.ZERO
-    var answerTime = mutableMapOf<ServerUser, Duration>()
+
+    val totalMessagesLBL = Label("0")
+    val totalTextMessagesLBL = Label("0")
+    val totalFileMessagesLBL = Label("0")
+    val totalUsersTaggedLBL = Label("0")
+    val averageAnswerTimeLBL = Label("0")
+    val totalUsageTimeLBL = Label("0")
+
+    private var answerTime: MutableMap<String, MutableList<Duration>> = mutableMapOf()
+    private val repliedMessages = mutableSetOf<Message>()
 
     val charts = mutableListOf<StatisticChart>()
     val fillWordChart = FillWordChart(user.getServer(), user)
@@ -48,14 +58,24 @@ class UserStatistic(private val user: ServerUser) {
             is FileMessage -> {
                 when (user.getName()) {
                     message.getSenderName() -> {
-                        sentFileMessages += 1
-                    }
+                        sentFileMessages += 1 }
                     message.getReceiverName() -> {
                         receivedFileMessages += 1
                     }
                 }
             }
         }
+
+        processAnswerTime(message)
+        updateGUI()
+    }
+
+    fun updateGUI() {
+        totalTextMessagesLBL.text = sentTextMessages.toString()
+        totalFileMessagesLBL.text = sentFileMessages.toString()
+        totalMessagesLBL.text = (sentFileMessages + sentTextMessages).toString()
+        averageAnswerTimeLBL.text = formatDuration(getAverageAnswerTime())
+        totalUsageTimeLBL.text = formatDuration(usageTime)
     }
 
     //Verarbeitet die Verwendung von Füllwörtern in einer Nachricht und aktualisiert das userbezogene Chart dazu.
@@ -109,32 +129,83 @@ class UserStatistic(private val user: ServerUser) {
      *
      * @param otherUser Der andere Benutzer, mit dem die Kommunikation analysiert wird.
      */
-    fun processAnswerTime(otherUser: ServerUser) {
-        var averageAnsTime: Duration = Duration.ZERO
-        var messageCount = 0
+    fun processAnswerTime(message: Message) {
+        if (message.getSenderName() == user.getName()) {
+            val originalMessage = user.getServer().getStats().messages.findLast {
+                it.getSenderName() == message.getReceiverName() && it.getReceiverName() == message.getSenderName()
+            }
 
-        val receivedMessages = user.getServer().getStats().processedMessages.filter {
-            it.getReceiverName() == user.getName() && it.getSenderName() == otherUser.getName()
+            if (originalMessage != null  && repliedMessages.contains(originalMessage).not()) {
+                val messageAnswerTime = Duration.between(originalMessage.getTimestamp(), message.getTimestamp())
+                val answerTimeList = answerTime.getOrPut(message.getReceiverName()) { mutableListOf() }
+                answerTimeList.add(messageAnswerTime)
+                repliedMessages.add(originalMessage)
+            }
         }
+    }
 
-        val sentMessages = user.getServer().getStats().processedMessages.filter {
-            it.getSenderName() == user.getName() && it.getReceiverName() == otherUser.getName()
-        }
+    fun getTotalAnswerTime(): Duration {
+        var newAnswerTime = Duration.ZERO
 
-        for (received in receivedMessages) {
-            val reply = sentMessages.firstOrNull { it.getTimestamp().isAfter(received.getTimestamp()) }
-            if (reply != null) {
-                val answerTime = Duration.between(received.getTimestamp(), reply.getTimestamp())
-                println(answerTime)
-                averageAnsTime += answerTime
-                messageCount++
+        for (otherUser in user.getServer().getUserNames()) {
+            val replyTimes = answerTime[otherUser] ?: listOf()
+
+            for (replyTime in replyTimes) {
+                newAnswerTime = newAnswerTime.plus(replyTime)
             }
         }
 
-        if (messageCount > 0) {
-            val answerTimeDuration = averageAnsTime.dividedBy(messageCount.toLong())
-            answerTime[otherUser] = getAverageAnswerTime(otherUser) + answerTimeDuration
+        return newAnswerTime
+    }
+
+    /**
+     * Berechnet die durchschnittliche Antwortzeit des Benutzers gegenüber allen anderen Benutzern.
+     *
+     * @return Die durchschnittliche Antwortzeit als [Duration]. Gibt [Duration.ZERO] zurück, wenn keine Antwortzeiten vorhanden sind.
+     */
+    fun getAverageAnswerTime(): Duration {
+        var totalAnswerTime = Duration.ZERO
+        var totalAnswers = 0
+
+        for ((_, responseTimes) in answerTime) {
+            for (responseTime in responseTimes) {
+                totalAnswerTime = totalAnswerTime.plus(responseTime)
+                totalAnswers++
+            }
         }
+
+        return if (totalAnswers > 0) totalAnswerTime.dividedBy(totalAnswers.toLong()) else Duration.ZERO
+    }
+
+    fun getAnswerTimeTotal(otherUser: ServerUser): Duration {
+        val replyTimes = answerTime[otherUser.getName()] ?: listOf()
+        var newAnswerTime = Duration.ZERO
+
+        for (replyTime in replyTimes) {
+            newAnswerTime = newAnswerTime.plus(replyTime)
+        }
+
+        return newAnswerTime
+    }
+
+    fun getAnswerTimeAverage(otherUser: ServerUser): Duration {
+        val totalAnswerTime = getAnswerTimeTotal(otherUser)
+        val answerCount = getAnswerTimes(otherUser).size
+
+        if (answerCount > 0) {
+            return totalAnswerTime.dividedBy(answerCount.toLong())
+        } else {
+            return Duration.ZERO
+        }
+    }
+
+    fun getAnswerTimes(otherUser: ServerUser): List<Duration> {
+        val answerTimes = answerTime[otherUser.getName()]
+        if (answerTimes != null) {
+            return answerTimes
+        }
+
+        return listOf()
     }
 
     /**
@@ -145,57 +216,35 @@ class UserStatistic(private val user: ServerUser) {
         usageTime += Duration.between(user.getLoginTime(), Instant.now())
     }
 
-    fun getAverageAnswerTime(otherUser: ServerUser): Duration {
-        return this.answerTime[otherUser] ?: Duration.ZERO
-    }
+    fun getSimpleAnswerTime(): Map<String, List<Long>> {
+        val convertedMap = mutableMapOf<String, List<Long>>()
 
-    fun getAverageAnswerTime(): Duration {
-        var totalAverageAnswerTime = Duration.ZERO
-        for (answerTime in answerTime.values) {
-            totalAverageAnswerTime = totalAverageAnswerTime.plus(answerTime)
+        for ((userName, times) in answerTime) {
+            val timesInMilliseconds = times.map { it.toMillis() }
+
+            convertedMap[userName] = timesInMilliseconds
         }
 
-        if (answerTime.size == 0) {
-            return totalAverageAnswerTime
-        } else {
-            return totalAverageAnswerTime.dividedBy(answerTime.values.size.toLong())
-        }
+        return convertedMap
     }
 
-//    fun getTotalContactAddressing(contact: String): Int {
-//        val addressingTrigger = "@"
-//        val triggerFilter = Regex("$addressingTrigger\\w+\\s\\w+")
-//        var addressingAmount = 0
-//
-//        for (message in processedMessages) {
-//            println("MESSAGE: " + message.getMessage())
-//            triggerFilter.findAll(message.getMessage().toString()).forEach { match ->
-//                val word = match.value.replace("@", "")
-//                println("CHECK: \n$word\n$contact")
-//                if (word == contact) {
-//                    addressingAmount++
-//                }
-//            }
-//
-//        }
-//        return addressingAmount
-//    }
-
-    fun getSimpleAnswerTime(): Map<String, Long> {
-        val map = mutableMapOf<String, Long>()
-        for ((user, duration) in answerTime) {
-            map[user.getName()] = duration.toMillis()
-        }
-
-        return map
-    }
-
-    fun setAnswerTimeSimple(data: Map<String, Long>) {
-        for ((userName, durationLong) in data) {
-            val foundUser = user.getServer().getUser(userName)
-            if (foundUser != null) {
-                answerTime[foundUser] = Duration.ofMillis(durationLong)
+    fun setFromSimpleAnswerTime(data: Map<String, List<Long>>) {
+        for ((userName, durations) in data) {
+            val newDurationsList: MutableList<Duration> = mutableListOf()
+            for (duration in durations) {
+                newDurationsList.add(Duration.ofMillis(duration))
             }
+
+            answerTime[userName] = newDurationsList
         }
+    }
+
+    private fun formatDuration(duration: Duration): String {
+        val seconds = duration.seconds
+        val hours = seconds / 3600
+        val minutes = (seconds % 3600) / 60
+        val secs = seconds % 60
+
+        return String.format("%02d:%02d:%02d", hours, minutes, secs)
     }
 }

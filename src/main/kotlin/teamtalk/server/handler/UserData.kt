@@ -10,7 +10,7 @@ data class UserData(
     val sentFileMessages: Int,
     val receivedFileMessages: Int,
     val usageTime: Long,
-    val answerTime: Map<String, Long>,
+    val answerTime: Map<String, List<Long>>,
     val fillWordStats: Map<String, Int>,
     val triggerWordStats: List<Map<String, Int>>
 )
