@@ -54,11 +54,12 @@ class ServerHandler(private val chatServer: ChatServer) {
                                     chatServer.getGUI().decreaseOnlineUsers()
                                     loggedOutUser.getStats().updateUsageTime()
                                     loggedOutUser.saveData()
-                                    chatServer.getUsers().remove(loggedOutUser)
+                                    chatServer.getUser(serverClient)?.logout()
                                     chatServer.getStats().updateTotalAverageUsageTime()
                                     chatServer.getGUI().updateQuickStats()
+                                    println(ServerHeader.STATUS_UPDATE.toJSON(this@ServerHandler))
                                     broadcast(ServerHeader.STATUS_UPDATE.toJSON(this@ServerHandler))
-                                    log("Verbindung von ${chatServer.getUser(serverClient)?.getName()} (${serverClient.getSocket().inetAddress.hostAddress}) getrennt.")
+                                    log("Verbindung von ${loggedOutUser.getName()} (${serverClient.getSocket().inetAddress.hostAddress}) getrennt.")
                                 } else {
                                     log("Verbindung von ${serverClient.getSocket().inetAddress.hostAddress} getrennt.")
                                 }

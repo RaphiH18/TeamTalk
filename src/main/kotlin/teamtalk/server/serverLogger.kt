@@ -37,7 +37,6 @@ object serverLogger {
             val debugMessage = "DEBUG $dateAndTime $PREFIX [${Thread.currentThread().name}] $message"
 
             println(debugMessage)
-            logPane.appendText("$debugMessage\n")
         }
     }
 
