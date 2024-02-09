@@ -34,7 +34,7 @@ class TriggerWordChart(private val chatServer: ChatServer, private val user: Ser
 
     private val guiScope = CoroutineScope(Dispatchers.JavaFx)
 
-    private var triggerWordsCount = loadTriggerWords()
+    private var triggerWordsCount: List<MutableMap<String, Int>> = listOf()
 
     private val triggerWordsChartData = FXCollections.observableArrayList<PieChart.Data>()
     private val triggerWordsChart = create()
@@ -238,28 +238,5 @@ class TriggerWordChart(private val chatServer: ChatServer, private val user: Ser
 
         this.triggerWordsCount = updatedListOfMaps.toList()
         update()
-    }
-
-    private fun loadTriggerWords() : List<MutableMap<String, Int>> {
-        return listOf(
-            mutableMapOf(
-                "gut" to 0,
-                "ja" to 0,
-                "super" to 0,
-                "perfekt" to 0,
-                "optimal" to 0,
-                "prima" to 0
-            ),
-            mutableMapOf(
-                "ok" to 0,
-                "einverstanden" to 0,
-                "passt" to 0
-            ),
-            mutableMapOf(
-                "schlecht" to 0,
-                "nein" to 0,
-                "schade" to 0
-            )
-        )
     }
 }

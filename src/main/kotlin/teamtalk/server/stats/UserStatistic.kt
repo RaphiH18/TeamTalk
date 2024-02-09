@@ -1,6 +1,10 @@
 package teamtalk.server.stats
 
 import javafx.scene.control.Label
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.javafx.JavaFx
+import kotlinx.coroutines.launch
 import teamtalk.message.FileMessage
 import teamtalk.message.Message
 import teamtalk.message.TextMessage
@@ -12,6 +16,8 @@ import java.time.Duration
 import java.time.Instant
 
 class UserStatistic(private val user: ServerUser) {
+
+    private val guiScope = CoroutineScope(Dispatchers.JavaFx)
 
     var sentTextMessages = 0
     var sentFileMessages = 0
@@ -71,11 +77,13 @@ class UserStatistic(private val user: ServerUser) {
     }
 
     fun updateGUI() {
-        totalTextMessagesLBL.text = sentTextMessages.toString()
-        totalFileMessagesLBL.text = sentFileMessages.toString()
-        totalMessagesLBL.text = (sentFileMessages + sentTextMessages).toString()
-        averageAnswerTimeLBL.text = formatDuration(getAverageAnswerTime())
-        totalUsageTimeLBL.text = formatDuration(usageTime)
+        guiScope.launch {
+            totalTextMessagesLBL.text = sentTextMessages.toString()
+            totalFileMessagesLBL.text = sentFileMessages.toString()
+            totalMessagesLBL.text = (sentFileMessages + sentTextMessages).toString()
+            averageAnswerTimeLBL.text = formatDuration(getAverageAnswerTime())
+            totalUsageTimeLBL.text = formatDuration(usageTime)
+        }
     }
 
     //Verarbeitet die Verwendung von Füllwörtern in einer Nachricht und aktualisiert das userbezogene Chart dazu.

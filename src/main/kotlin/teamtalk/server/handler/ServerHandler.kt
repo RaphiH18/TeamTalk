@@ -5,12 +5,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import teamtalk.utilities
-import teamtalk.server.serverLogger.debug
-import teamtalk.server.serverLogger.log
 import teamtalk.message.FileMessage
 import teamtalk.message.TextMessage
 import teamtalk.server.handler.network.ServerClient
 import teamtalk.server.handler.network.ServerHeader
+import teamtalk.server.serverLogger.debug
+import teamtalk.server.serverLogger.log
 import java.io.File
 import java.net.InetAddress
 import java.net.ServerSocket
@@ -66,8 +66,6 @@ class ServerHandler(private val chatServer: ChatServer) {
                                 break
                             }
                         }
-
-                        chatServer.getUser(serverClient)?.logout()
                     }
                 } catch (e: SocketException) {
                     log("Der Server wurde beendet (${e.message}).")
@@ -153,7 +151,7 @@ class ServerHandler(private val chatServer: ChatServer) {
                             while (bytesReadTotal < payloadSize) {
                                 val bytesRead = serverClient.getInput().read(fileChunkBytes)
                                 bytesReadTotal += bytesRead
-                                debug("<- Von Server erhalten: Nur Daten, eingelesen: $bytesRead")
+                                debug("<- Von Client erhalten: Nur Daten, eingelesen: $bytesRead")
                                 receiverUser.getClient()!!.sendPayload(fileChunkBytes.copyOf(bytesRead))
                             }
 

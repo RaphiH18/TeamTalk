@@ -13,9 +13,10 @@ import javafx.scene.paint.Color.GREEN
 import javafx.scene.shape.Circle
 import kotlinx.coroutines.*
 import kotlinx.coroutines.javafx.JavaFx
-import teamtalk.server.serverLogger
 import teamtalk.server.handler.ChatServer
 import teamtalk.server.handler.ServerUser
+import teamtalk.server.serverLogger
+import teamtalk.server.serverLogger.log
 import java.time.Duration
 import java.time.Instant
 import kotlin.system.exitProcess
@@ -95,7 +96,7 @@ class ServerGUI(private val chatServer: ChatServer) {
             padding = Insets(10.0)
 
             children.add(controlArea)
-            children.add(serverLogger.createServerView())
+            children.add(serverLogger.createView())
 
             VBox.setVgrow(this, Priority.ALWAYS)
         }
@@ -332,7 +333,7 @@ class ServerGUI(private val chatServer: ChatServer) {
         chatServer.setPort(portTF.text.toInt())
         chatServer.setIP(ipTF.text)
         chatServer.getConfig().saveSettings()
-        serverLogger.log("Einstellungen übernommen - IP: ${ipTF.text}, Port: ${portTF.text}")
+        log("Einstellungen übernommen - IP: ${ipTF.text}, Port: ${portTF.text}")
     }
 
     /*

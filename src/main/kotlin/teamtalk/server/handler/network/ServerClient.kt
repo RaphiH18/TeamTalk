@@ -1,7 +1,7 @@
 package teamtalk.server.handler.network
 
 import org.json.JSONObject
-import teamtalk.server.serverLogger
+import teamtalk.server.serverLogger.debug
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.net.Socket
@@ -26,7 +26,7 @@ class ServerClient(private val socket: Socket) {
             output.write(payloadBytes)
         }
 
-        serverLogger.debug("-> An Client gesendet (Header): $header")
+        debug("-> An Client gesendet (Header): $header")
     }
 
     fun sendHeader(header: JSONObject) {
@@ -34,7 +34,7 @@ class ServerClient(private val socket: Socket) {
         output.writeInt(headerBytes.size)
         output.write(headerBytes)
 
-        serverLogger.debug("-> An Client gesendet: Nur Header ($header)")
+        debug("-> An Client gesendet: Nur Header ($header)")
     }
 
     fun sendPayload(payloadBytes: ByteArray = byteArrayOf()) {
@@ -43,6 +43,6 @@ class ServerClient(private val socket: Socket) {
             output.flush()
         }
 
-        serverLogger.debug("-> An Client gesendet: Nur Daten mit der Grösse ${payloadBytes.size}")
+        debug("-> An Client gesendet: Nur Daten mit der Grösse ${payloadBytes.size}")
     }
 }

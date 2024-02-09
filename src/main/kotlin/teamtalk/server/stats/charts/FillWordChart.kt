@@ -22,7 +22,7 @@ class FillWordChart(private val chatServer: ChatServer, private val user: Server
 
     private val guiScope = CoroutineScope(Dispatchers.JavaFx)
 
-    private var fillWordsCount = loadFillWords()
+    private var fillWordsCount: MutableMap<String, Int> = mutableMapOf()
 
     private val fillWordsChartData = FXCollections.observableArrayList<PieChart.Data>()
     private val fillWordsChart = create()
@@ -179,18 +179,4 @@ class FillWordChart(private val chatServer: ChatServer, private val user: Server
     }
 
     fun isFillWord(word: String) = fillWordsCount.containsKey(word)
-
-    private fun loadFillWords(): MutableMap<String, Int> {
-        return mutableMapOf(
-            "der" to 0,
-            "die" to 0,
-            "das" to 0,
-            "und" to 0,
-            "oder" to 0,
-            "also" to 0,
-            "quasi" to 0,
-            "sozusagen" to 0,
-            "eigentlich" to 0
-        )
-    }
 }

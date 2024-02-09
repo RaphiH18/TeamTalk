@@ -1,7 +1,7 @@
 package teamtalk.server.handler
 
-import teamtalk.server.serverLogger.log
 import teamtalk.server.handler.network.ServerClient
+import teamtalk.server.serverLogger.log
 import teamtalk.server.stats.StatisticHandler
 import teamtalk.server.ui.ServerGUI
 

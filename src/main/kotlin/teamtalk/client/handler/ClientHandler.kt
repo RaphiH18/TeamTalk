@@ -26,7 +26,6 @@ class ClientHandler(private var chatClient: ChatClient) {
     private lateinit var output: DataOutputStream
     val handlerScope = CoroutineScope(Dispatchers.IO)
     private val mutex = Mutex()
-    val messageChannel = Channel<Pair<JSONObject?, ByteArray?>>()
 
     private var status = "Bereit"
 
@@ -36,6 +35,14 @@ class ClientHandler(private var chatClient: ChatClient) {
     Das GUI zeigt in der Kontakt-Liste jedoch nur die Kontakte an, die Online sind.
      */
     private val contacts = mutableListOf<Contact>()
+
+    fun disconnect() {
+        if (isConnected()) {
+            input.close()
+            output.close()
+            status = "Bereit"
+        }
+    }
 
     /**
      * Stellt eine Verbindung zum Server her und verarbeitet eingehende Nachrichten.

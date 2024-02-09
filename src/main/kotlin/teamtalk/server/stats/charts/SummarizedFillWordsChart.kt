@@ -64,7 +64,6 @@ class SummarizedFillWordsChart(private val chatServer: ChatServer) : StatisticCh
                     chart.data.add(series)
                 }
 
-                // ANONYMES CHART
                 for ((index, user) in chatServer.getUsers().withIndex()) {
                     val count = fillWordsCount[user]?.get(word) ?: 0
                     val userName = "Benutzer ${index + 1}"
@@ -76,20 +75,6 @@ class SummarizedFillWordsChart(private val chatServer: ChatServer) : StatisticCh
                         series.data.add(XYChart.Data(userName, count))
                     }
                 }
-
-                /* PERSÖNLICH, NICHT ANONYM
-                for ((user, wordUsageMap) in fillWordsCount) {
-                    val count = wordUsageMap[word] ?: 0
-                    var data = series.data.find { it.xValue == user.getName() }
-
-                    if (data != null) {
-                        data.yValue = count
-                    } else {
-                        data = XYChart.Data(user.getName(), count)
-                        series.data.add(data)
-                    }
-                }
-                */
             }
         }
     }
@@ -119,24 +104,6 @@ class SummarizedFillWordsChart(private val chatServer: ChatServer) : StatisticCh
     }
 
     fun getData() = fillWordsCount
-
-//    fun getSimpleData(): Map<String, Map<String, Int>> {
-//        val map = mutableMapOf<String, Map<String, Int>>()
-//        for ((user, fillWordMap) in fillWordsCount) {
-//            map[user.getName()] = fillWordMap
-//        }
-//
-//        return map.toMap()
-//    }
-//
-//    fun setDataSimple(data: Map<String, Map<String, Int>>) {
-//        for ((userName, fillWordMap) in data) {
-//            val foundUser = chatServer.getUser(userName)
-//            if (foundUser != null) {
-//                fillWordsCount[foundUser] = fillWordMap.toMutableMap()
-//            }
-//        }
-//    }
 
     fun save() {
         val fileChooser = FileChooser().apply {

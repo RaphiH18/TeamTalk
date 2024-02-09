@@ -39,26 +39,25 @@ class ClientGUI(private val chatClient: ChatClient) {
 
     lateinit var primaryStage: Stage
 
-    private val defaultIP = "127.0.0.1"
-    private val defaultPort = "4444"
-
-    private var connectBtn = Button("Verbinden")
-    private var messageOutputLbl = Label("Bereit")
-
-    private var contactList = ListView<String>()
-
-    private var sendFileBtn = Button("Senden")
-    private var chosenFileLbl = Label("Keine Datei zum Senden ausgewählt")
-    private var receivedFilesVBox = VBox()
-    private lateinit var fileToSend: File
-
+    private val DEFAULT_IP = "127.0.0.1"
+    private val DEFAULT_PORT = "4444"
     private val CHAT_EMPTY = "Wähle einen Kontakt aus."
 
-    private var currentUserLbl = Label()
+    private val connectBTN = Button("Verbinden")
+    private val connectionStatusLBL = Label("Bereit")
+
+    private val contactsLV = ListView<String>()
+
+    private val sendFileBTN = Button("Senden")
+    private val chosenFileLBL = Label("Keine Datei zum Senden ausgewählt")
+    private var receivedFilesVB = VBox()
+    private lateinit var fileToSend: File
+
+    private var currentUserLBL = Label()
     private var currentUser = ""
         set(value) {
             field = value
-            currentUserLbl.text = value
+            currentUserLBL.text = value
         }
 
     private val conversationSP = ScrollPane()
@@ -93,13 +92,13 @@ class ClientGUI(private val chatClient: ChatClient) {
     suspend fun waitForConnected() {
         while (true) {
             if (!(chatClient.isConnected())) {
-                messageOutputLbl.text = chatClient.getHandler().getStatusMessage()
+                connectionStatusLBL.text = chatClient.getHandler().getStatusMessage()
                 delay(100)
                 if (chatClient.getHandler().getStatusMessage() == "Timeout") {
-                    connectBtn.isDisable = false
+                    connectBTN.isDisable = false
                 }
             } else {
-                messageOutputLbl.text = chatClient.getHandler().getStatusMessage()
+                connectionStatusLBL.text = chatClient.getHandler().getStatusMessage()
                 break
             }
         }
@@ -107,7 +106,7 @@ class ClientGUI(private val chatClient: ChatClient) {
 
     fun startConnectionGUI(stage: Stage) {
         val serverLbl = Label("Server")
-        val serverTf = TextField(defaultIP)
+        val serverTf = TextField(DEFAULT_IP)
 
         val serverHb = HBox().apply {
             prefWidth = 200.0
@@ -129,12 +128,12 @@ class ClientGUI(private val chatClient: ChatClient) {
             spacing = 10.0
             with(children) {
                 add(messageLbl)
-                add(messageOutputLbl)
+                add(connectionStatusLBL)
             }
         }
 
         val portLbl = Label("Port")
-        val portTf = TextField(defaultPort).apply {
+        val portTf = TextField(DEFAULT_PORT).apply {
             maxWidth = 68.0
         }
 
@@ -143,10 +142,10 @@ class ClientGUI(private val chatClient: ChatClient) {
             children.add(portTf)
         }
 
-        connectBtn.apply {
+        connectBTN.apply {
             setOnAction {
                 chatClient.start(serverTf.text, portTf.text.toInt())
-                connectBtn.isDisable = true
+                connectBTN.isDisable = true
             }
         }
 
@@ -158,7 +157,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             with(children) {
                 add(portLbl)
                 add(portTfVb)
-                add(connectBtn)
+                add(connectBTN)
             }
         }
 
@@ -190,7 +189,23 @@ class ClientGUI(private val chatClient: ChatClient) {
                         usernameList.add(user.getUsername())
                     }
                 }
-                userChoice = ChoiceDialog(usernameList[0], usernameList)
+
+                if (usernameList.isNotEmpty()) {
+                    userChoice = ChoiceDialog(usernameList[0], usernameList)
+                } else {
+                    val alert = Alert(AlertType.WARNING)
+                    alert.title = "Keine Benutzer"
+                    alert.headerText = "Keine Benutzer verfügbar"
+                    alert.contentText = "Zurzeit sind keine Benutzer verfügbar, mit welchen\n" +
+                            "man sich anmelden kann.\n\n" +
+                            "Die Anwendung wird nun beendet."
+                    val result = alert.showAndWait()
+
+                    if (result.isPresent && result.get() == ButtonType.OK) {
+                        Thread.sleep(500)
+                        chatClient.getHandler().disconnect()
+                    }
+                }
             }
             with(userChoice) {
                 setTitle("Benutzerauswahl")
@@ -259,12 +274,12 @@ class ClientGUI(private val chatClient: ChatClient) {
         }
 
         guiScope.launch {
-            contactList.items = contactData
+            contactsLV.items = contactData
         }
     }
 
     private fun createContactView(): Node {
-        contactList.apply {
+        contactsLV.apply {
             minWidth = 200.0
             maxWidth = 200.0
             prefHeight = 600.0
@@ -278,7 +293,7 @@ class ClientGUI(private val chatClient: ChatClient) {
                 }
             }
         }
-        return contactList
+        return contactsLV
     }
 
     private fun createChattingView(): Node {
@@ -290,7 +305,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             }
         }
 
-        currentUserLbl.apply {
+        currentUserLBL.apply {
             prefHeight = 50.0
             prefWidth = 580.0
             font = Font("Arial", 24.0)
@@ -368,7 +383,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             style = ("-fx-background-color: #E8E8E8")
         }
 
-        receivedFilesVBox = VBox().apply {
+        receivedFilesVB = VBox().apply {
             prefHeight = 390.0
             padding = Insets(5.0, 0.0, 0.0, 20.0)
             with(children) {
@@ -387,7 +402,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             children.add(sendLbl)
         }
 
-        chosenFileLbl.apply {
+        chosenFileLBL.apply {
             prefWidth = 250.0
             alignment = Pos.CENTER
         }
@@ -401,8 +416,8 @@ class ClientGUI(private val chatClient: ChatClient) {
                 fileToSend = fileChooser.showOpenDialog(primaryStage)
                 if (fileToSend.exists()) {
                     text = fileToSend.name
-                    chosenFileLbl.text = fileToSend.name
-                    sendFileBtn.isDisable = false
+                    chosenFileLBL.text = fileToSend.name
+                    sendFileBTN.isDisable = false
                 }
             }
         }
@@ -413,7 +428,7 @@ class ClientGUI(private val chatClient: ChatClient) {
         }
 
         //Button, um ein File zu senden
-        sendFileBtn.apply {
+        sendFileBTN.apply {
             padding = Insets(0.0, 0.0, 0.0, 0.0)
             prefHeight = 30.0
             prefWidth = 75.0
@@ -442,7 +457,7 @@ class ClientGUI(private val chatClient: ChatClient) {
 
                 isDisable = true
                 filePickerBtn.text = "Datei auswählen"
-                chosenFileLbl.text = "Noch keine Datei ausgewählt"
+                chosenFileLBL.text = "Noch keine Datei ausgewählt"
             }
         }
 
@@ -450,7 +465,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             padding = Insets(5.0, 0.0, 0.0, 0.0)
             with(children) {
                 add(filePickerVb)
-                add(sendFileBtn)
+                add(sendFileBTN)
             }
         }
 
@@ -458,7 +473,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             padding = Insets(0.0, 0.0, 0.0, 20.0)
             with(children) {
                 add(sendVb)
-                add(chosenFileLbl)
+                add(chosenFileLBL)
                 add(chooseSentHb)
             }
         }
@@ -467,7 +482,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             padding = Insets(10.0, 0.0, 0.0, 10.0)
             with(children) {
                 add(dataTransferLbl)
-                add(receivedFilesVBox)
+                add(receivedFilesVB)
                 add(sendContentVb)
             }
         }
@@ -482,7 +497,7 @@ class ClientGUI(private val chatClient: ChatClient) {
         val allContentVb = VBox().apply {
             padding = Insets(5.0)
             with(children) {
-                add(currentUserLbl)
+                add(currentUserLBL)
                 add(allContentDividerHb)
             }
         }
@@ -509,7 +524,7 @@ class ClientGUI(private val chatClient: ChatClient) {
                     "GUI_CLICK" -> {
                         //outputChatTa.text = ""
                         conversationTF.children.clear()
-                        receivedFilesVBox.children.clear()
+                        receivedFilesVB.children.clear()
 
                         for (message in messages) {
                             addMessage(message)
@@ -538,11 +553,11 @@ class ClientGUI(private val chatClient: ChatClient) {
                     var senderNameText = Text()
                     if (message.getSenderName() == chatClient.getUsername()) {
                         senderNameText = Text("${message.getSenderName()}: ").apply {
-                            style = "-fx-font-weight: bold; -fx-fill: green;"
+                            style = "-fx-font-weight: bold;"
                         }
                     } else {
                         senderNameText = Text("${message.getSenderName()}: ").apply {
-                            style = "-fx-font-weight: bold; -fx-fill: blue;"
+                            style = "-fx-font-weight: bold;  -fx-fill: green;"
                         }
                     }
 
@@ -575,7 +590,7 @@ class ClientGUI(private val chatClient: ChatClient) {
                 children.add(fileButton)
             }
 
-            receivedFilesVBox.children.add(fileVb)
+            receivedFilesVB.children.add(fileVb)
         }
     }
 
