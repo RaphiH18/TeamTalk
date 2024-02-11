@@ -34,7 +34,7 @@ class TriggerWordChart(private val chatServer: ChatServer, private val user: Ser
 
     private val guiScope = CoroutineScope(Dispatchers.JavaFx)
 
-    private var triggerWordsCount: List<MutableMap<String, Int>> = listOf()
+    private var triggerWordsCount: List<MutableMap<String, Int>> = listOf(mutableMapOf(), mutableMapOf(), mutableMapOf())
 
     private val triggerWordsChartData = FXCollections.observableArrayList<PieChart.Data>()
     private val triggerWordsChart = create()
@@ -135,30 +135,35 @@ class TriggerWordChart(private val chatServer: ChatServer, private val user: Ser
     Interne Logik
      */
     fun countIfTriggerWord(word: String) {
-        for (triggerWordMap in triggerWordsCount) {
-            if (triggerWordMap.containsKey(word)) {
-                val currentCount = triggerWordMap[word] ?: 0
-                triggerWordMap[word] = currentCount + 1
-                break
+        println("wort ist ein triggerWort: ${isTriggerWord(word)}")
+
+        if (isTriggerWord(word)) {
+            val category = getCategory(word)
+            when (category) {
+                WordCategory.POSITIVE -> {
+                    val currentCount = triggerWordsCount[0][word] ?: 0
+                    triggerWordsCount[0][word] = currentCount + 1
+                }
+                WordCategory.NEUTRAL -> {
+                    val currentCount = triggerWordsCount[1][word] ?: 0
+                    triggerWordsCount[1][word] = currentCount + 1
+                }
+                WordCategory.NEGATIVE -> {
+                    val currentCount = triggerWordsCount[2][word] ?: 0
+                    triggerWordsCount[2][word] = currentCount + 1
+                }
             }
         }
     }
 
-    fun isTriggerWord(word: String): Boolean {
-        for (triggerWordMap in triggerWordsCount) {
-            if (triggerWordMap.containsKey(word)) {
-                return true
-            }
-        }
-        return false
-    }
+    fun isTriggerWord(word: String)= chatServer.getConfig().triggerWordsList.any { it.contains(word) }
 
     private fun getCategory(word: String): WordCategory {
-        if (triggerWordsCount[0].containsKey(word)) {
+        if (chatServer.getConfig().positiveTriggerWords.contains(word)) {
             return WordCategory.POSITIVE
-        } else if (triggerWordsCount[1].containsKey(word)) {
+        } else if (chatServer.getConfig().neutraleTriggerWords.contains(word)) {
             return WordCategory.NEUTRAL
-        } else if (triggerWordsCount[2].containsKey(word)) {
+        } else if (chatServer.getConfig().negativeTriggerWords.contains(word)) {
             return WordCategory.NEGATIVE
         }
 
@@ -218,25 +223,57 @@ class TriggerWordChart(private val chatServer: ChatServer, private val user: Ser
     fun getData() = triggerWordsCount.toList()
 
     fun setData(data: List<Map<String, Int>>) {
-        val updatedListOfMaps = mutableListOf<MutableMap<String, Int>>()
+        val updatedStats = mutableListOf<MutableMap<String, Int>>(mutableMapOf(), mutableMapOf(), mutableMapOf())
 
+        // Füge das Wort mit seinem Count hinzu, wenn es in der aktuellen Liste enthalten ist
         for (map in data) {
-            val updatedMap = mutableMapOf<String, Int>()
-
             for ((word, count) in map) {
-                if (chatServer.getConfig().triggerWordsList.contains(word)) {
-                    updatedMap[word] = count
+                if (chatServer.getConfig().positiveTriggerWords.contains(word)) {
+                    updatedStats[0][word] = count
+                } else if (chatServer.getConfig().neutraleTriggerWords.contains(word)) {
+                    updatedStats[1][word] = count
+                } else if (chatServer.getConfig().negativeTriggerWords.contains(word)) {
+                    updatedStats[2][word] = count
                 }
             }
-
-            for (word in chatServer.getConfig().triggerWordsList) {
-                updatedMap.putIfAbsent(word, 0)
-            }
-
-            updatedListOfMaps.add(updatedMap)
         }
 
-        this.triggerWordsCount = updatedListOfMaps.toList()
+        // Füge das Wort mit dem Count 0 hinzu, wenn es nicht in den aktualisierten Statistiken vorhanden ist
+        for ((listIndex, list) in chatServer.getConfig().triggerWordsList.withIndex()) {
+            for (word in list) {
+                if (updatedStats.any { it.containsKey(word) }.not()) {
+                    updatedStats[listIndex][word] = 0
+                }
+            }
+        }
+
+        triggerWordsCount = updatedStats
         update()
+        println(triggerWordsCount)
     }
+
+//    fun setData(data: List<Map<String, Int>>) {
+//        val updatedListOfMaps = mutableListOf<MutableMap<String, Int>>()
+//
+//        println(data)
+//
+//        for (map in data) {
+//            val updatedMap = mutableMapOf<String, Int>()
+//
+//            for ((word, count) in map) {
+//                if (isTriggerWord(word)) {
+//                    updatedMap[word] = count
+//                }
+//            }
+//
+////            for (word in chatServer.getConfig().positiveTriggerWords) {
+////                updatedMap.putIfAbsent(word, 0)
+////            }
+//
+//            updatedListOfMaps.add(updatedMap)
+//        }
+//
+//        this.triggerWordsCount = updatedListOfMaps.toList()
+//        update()
+//    }
 }

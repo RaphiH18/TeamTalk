@@ -35,6 +35,8 @@ class UserStatistic(private val user: ServerUser) {
     private var answerTime: MutableMap<String, MutableList<Duration>> = mutableMapOf()
     private val repliedMessages = mutableSetOf<Message>()
 
+    var taggedUsersCount: MutableMap<String, Int> = mutableMapOf()
+
     val charts = mutableListOf<StatisticChart>()
     val fillWordChart = FillWordChart(user.getServer(), user)
     val triggerWordChart = TriggerWordChart(user.getServer(), user)
@@ -53,6 +55,7 @@ class UserStatistic(private val user: ServerUser) {
                         sentTextMessages += 1
                         processFillWords(message.getMessage())
                         processTriggerWords(message.getMessage())
+                        processTaggedUsers(message.getMessage())
                     }
 
                     message.getReceiverName() -> {
@@ -83,6 +86,7 @@ class UserStatistic(private val user: ServerUser) {
             totalMessagesLBL.text = (sentFileMessages + sentTextMessages).toString()
             averageAnswerTimeLBL.text = formatDuration(getAverageAnswerTime())
             totalUsageTimeLBL.text = formatDuration(usageTime)
+            totalUsersTaggedLBL.text = taggedUsersCount.values.sum().toString()
         }
     }
 
@@ -148,6 +152,21 @@ class UserStatistic(private val user: ServerUser) {
                 val answerTimeList = answerTime.getOrPut(message.getReceiverName()) { mutableListOf() }
                 answerTimeList.add(messageAnswerTime)
                 repliedMessages.add(originalMessage)
+            }
+        }
+    }
+
+    fun processTaggedUsers(message: String) {
+        val tagRegex = Regex("@[^:]+:")
+        val tags = tagRegex.findAll(message).map { it.value }.toList()
+
+        for (tag in tags) {
+            val username = tag.removePrefix("@").removeSuffix(":")
+            val taggedUser = user.getServer().getUser(username)
+
+            if (taggedUser != null) {
+                val currentCount = taggedUsersCount.getOrDefault(taggedUser.getName(), 0)
+                taggedUsersCount[taggedUser.getName()] = currentCount + 1
             }
         }
     }
@@ -222,6 +241,7 @@ class UserStatistic(private val user: ServerUser) {
      */
     fun updateUsageTime() {
         usageTime += Duration.between(user.getLoginTime(), Instant.now())
+        updateGUI()
     }
 
     fun getSimpleAnswerTime(): Map<String, List<Long>> {

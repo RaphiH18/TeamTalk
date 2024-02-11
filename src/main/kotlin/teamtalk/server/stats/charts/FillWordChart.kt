@@ -119,26 +119,23 @@ class FillWordChart(private val chatServer: ChatServer, private val user: Server
     fun getData() = fillWordsCount
 
     fun setData(data: Map<String, Int>) {
-        val newData = data.toMutableMap()
-        val keysToRemove = mutableListOf<String>()
+        val updatedStats = mutableMapOf<String, Int>()
 
-        for ((word, count) in newData) {
+        // Füge das Wort mit seinem Count hinzu, wenn es in der aktuellen Füllwörter-Liste enthalten ist
+        for ((word, count) in data) {
             if (chatServer.getConfig().fillWordsList.contains(word)) {
-                fillWordsCount[word] = count
-            } else {
-                keysToRemove.add(word)
+                updatedStats[word] = count
             }
         }
-        this.fillWordsCount = newData
 
+        // Füge das Wort mit dem Count 0 hinzu, wenn es nicht in den aktualisierten Statistiken vorhanden ist
         for (word in chatServer.getConfig().fillWordsList) {
-            if (fillWordsCount.containsKey(word).not()) {
-                fillWordsCount[word] = 0
+            if (updatedStats.containsKey(word).not()) {
+                updatedStats[word] = 0
             }
         }
 
-        keysToRemove.forEach { newData.remove(it) }
-
+        fillWordsCount = updatedStats
         update()
     }
 
@@ -178,5 +175,5 @@ class FillWordChart(private val chatServer: ChatServer, private val user: Server
         return false
     }
 
-    fun isFillWord(word: String) = fillWordsCount.containsKey(word)
+    fun isFillWord(word: String) = chatServer.getConfig().fillWordsList.contains(word)
 }

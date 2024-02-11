@@ -64,7 +64,8 @@ class ServerUser(private val chatServer: ChatServer, private var username: Strin
             userStats.usageTime.toMillis(),
             userStats.getSimpleAnswerTime(),
             userStats.fillWordChart.getData(),
-            userStats.triggerWordChart.getData())
+            userStats.triggerWordChart.getData(),
+            userStats.taggedUsersCount)
 
         val jsonFormat = Json { prettyPrint = true }
         val serializedData = jsonFormat.encodeToString(userData)
@@ -98,6 +99,7 @@ class ServerUser(private val chatServer: ChatServer, private var username: Strin
             this.userStats.setFromSimpleAnswerTime(userData.answerTime)
             userStats.fillWordChart.setData(userData.fillWordStats)
             userStats.triggerWordChart.setData(userData.triggerWordStats)
+            this.userStats.taggedUsersCount = userData.tagStats.toMutableMap()
         }
     }
 }

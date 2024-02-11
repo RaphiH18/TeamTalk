@@ -15,7 +15,10 @@ class ServerConfig(private val chatServer: ChatServer) {
     lateinit var configFile: YAMLConfiguration
 
     val fillWordsList = mutableListOf<String>()
-    val triggerWordsList = mutableListOf<String>()
+    val triggerWordsList = mutableListOf<List<String>>()
+    val positiveTriggerWords = mutableListOf<String>()
+    val neutraleTriggerWords = mutableListOf<String>()
+    val negativeTriggerWords = mutableListOf<String>()
 
     fun saveData() {
         for (user in chatServer.getUsers()) {
@@ -89,9 +92,12 @@ class ServerConfig(private val chatServer: ChatServer) {
         configFile.read(FileReader(file))
 
         fillWordsList.addAll(configFile.getList("stats.fillwords") as List<String>)
-        triggerWordsList.addAll(configFile.getList("stats.triggerwords.positive") as List<String>)
-        triggerWordsList.addAll(configFile.getList("stats.triggerwords.neutral") as List<String>)
-        triggerWordsList.addAll(configFile.getList("stats.triggerwords.negative") as List<String>)
+        positiveTriggerWords.addAll(configFile.getList("stats.triggerwords.positive") as List<String>)
+        neutraleTriggerWords.addAll(configFile.getList("stats.triggerwords.neutral") as List<String>)
+        negativeTriggerWords.addAll(configFile.getList("stats.triggerwords.negative") as List<String>)
+        triggerWordsList.add(positiveTriggerWords)
+        triggerWordsList.add(neutraleTriggerWords)
+        triggerWordsList.add(negativeTriggerWords)
         chatServer.setIP(configFile.getString("server.ip"))
         chatServer.setPort(configFile.getInt("server.port"))
         serverLogger.DEBUG = configFile.getBoolean("server.debug")

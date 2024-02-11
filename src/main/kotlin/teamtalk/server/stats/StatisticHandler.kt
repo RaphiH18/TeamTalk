@@ -32,6 +32,7 @@ class StatisticHandler(private val chatServer: ChatServer) {
 
     var totalTextMessages = 0
     var totalFileMessages = 0
+    var totalUsersTagged = 0
     var averageAnswerTime = Duration.ZERO
     var averageUsageTime = Duration.ZERO
 
@@ -84,6 +85,9 @@ class StatisticHandler(private val chatServer: ChatServer) {
 
         //Aktualisierung der durchschnittlichen globalen Nutzungszeit
         updateTotalAverageAnswerTime()
+
+        //Aktualisierung der totalen Anzahl an getaggten Benutzern
+        updateTotalUsersTagged()
 
         //Anzeige aller gewonnenen Statistiken im Statistiken > Übersicht-Bereich des Server-GUI.
         chatServer.getGUI().updateQuickStats()
@@ -139,6 +143,16 @@ class StatisticHandler(private val chatServer: ChatServer) {
         }
 
         averageAnswerTime = totalAnswerTime.dividedBy(chatServer.getUsers().size.toLong())
+    }
+
+    fun updateTotalUsersTagged() {
+        var tagCount = 0
+
+        for (user in chatServer.getUsers()) {
+            tagCount += user.getStats().taggedUsersCount.values.sum()
+        }
+
+        totalUsersTagged = tagCount
     }
 
     fun updateTotalAverageUsageTime() {

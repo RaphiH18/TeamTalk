@@ -12,5 +12,6 @@ data class UserData(
     val usageTime: Long,
     val answerTime: Map<String, List<Long>>,
     val fillWordStats: Map<String, Int>,
-    val triggerWordStats: List<Map<String, Int>>
+    val triggerWordStats: List<Map<String, Int>>,
+    val tagStats: Map<String, Int>
 )

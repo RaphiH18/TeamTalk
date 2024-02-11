@@ -52,12 +52,12 @@ class ServerGUI(private val chatServer: ChatServer) {
     private val applyBTN = applyBTN()
 
     // Globale Variablen/Values für den "Globale Statistik"-Tab
-    private val totalMessages = Label("0")
-    private val totalTextMessages = Label("0")
-    private val totalFileMessages = Label("0")
-    private val totalUsersTagged = Label("0")
-    private val averageAnswerTime = Label("0")
-    private val averageUsageTime = Label("0")
+    private val totalMessagesLBL = Label("0")
+    private val totalTextMessagesLBL = Label("0")
+    private val totalFileMessagesLBL = Label("0")
+    private val totalUsersTaggedLBL = Label("0")
+    private val averageAnswerTimeLBL = Label("0")
+    private val averageUsageTimeLBL = Label("0")
 
     //  Globale Variablen/Values für den "Detaillierte Statistik"-Tab
     private var selectedStatsVB = selectedStatsVB()
@@ -265,12 +265,12 @@ class ServerGUI(private val chatServer: ChatServer) {
             add(Label("Durchschnittliche Antwortzeit pro Benutzer:"), 0, 4)
             add(Label("Durchschnittliche Nutzungszeit pro Benutzer:"), 0, 5)
 
-            add(totalMessages, 1,0 )
-            add(totalTextMessages, 1, 1)
-            add(totalFileMessages, 1, 2)
-            add(totalUsersTagged, 1, 3)
-            add(averageAnswerTime, 1, 4)
-            add(averageUsageTime, 1, 5)
+            add(totalMessagesLBL, 1,0 )
+            add(totalTextMessagesLBL, 1, 1)
+            add(totalFileMessagesLBL, 1, 2)
+            add(totalUsersTaggedLBL, 1, 3)
+            add(averageAnswerTimeLBL, 1, 4)
+            add(averageUsageTimeLBL, 1, 5)
         }
 
         val statsTiPn = TitledPane("Statistiken", chartsGP)
@@ -575,11 +575,12 @@ class ServerGUI(private val chatServer: ChatServer) {
 
     fun updateQuickStats() {
         guiScope.launch {
-            totalMessages.text = "${chatServer.getStats().totalTextMessages + chatServer.getStats().totalFileMessages}"
-            totalTextMessages.text = "${chatServer.getStats().totalTextMessages}"
-            totalFileMessages.text = "${chatServer.getStats().totalFileMessages}"
-            averageAnswerTime.text = formatDuration(chatServer.getStats().averageAnswerTime)
-            averageUsageTime.text = formatDuration(chatServer.getStats().averageUsageTime)
+            totalMessagesLBL.text = "${chatServer.getStats().totalTextMessages + chatServer.getStats().totalFileMessages}"
+            totalTextMessagesLBL.text = "${chatServer.getStats().totalTextMessages}"
+            totalFileMessagesLBL.text = "${chatServer.getStats().totalFileMessages}"
+            averageAnswerTimeLBL.text = formatDuration(chatServer.getStats().averageAnswerTime)
+            averageUsageTimeLBL.text = formatDuration(chatServer.getStats().averageUsageTime)
+            totalUsersTaggedLBL.text = "${chatServer.getStats().totalUsersTagged}"
         }
     }
 
