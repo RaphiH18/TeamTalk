@@ -1,4 +1,5 @@
 @startuml
+title TeamTalk | Klassendiagramm v2
 
 package teamtalk {
     object logger {
@@ -446,33 +447,5 @@ package "teamtalk.server" {
         +start(stage: Stage)
     }
 }
-
-' Beziehungen
-ClientApp --> ChatClient : Uses
-ChatClient --> ClientHandler : Uses
-ChatClient --> ClientGUI : Uses
-ClientHandler --> ChatClient : Uses
-ServerGUI --> ChatServer : Uses
-ChatServer --> ServerHandler : Uses
-ChatServer --> ServerUser : Contains
-ChatServer --> ServerGUI : Uses
-ChatServer --> StatisticHandler : Uses
-ServerHandler --> ChatServer : Uses
-ServerHandler --> ServerClient : Uses
-ServerUser --> ServerClient : Uses
-ServerUser --> UserStatistic : Uses
-StatisticHandler --> ChatServer : Uses
-StatisticHandler --> ServerUser : Uses
-StatisticHandler --> FillWordChart : Uses
-StatisticHandler --> TriggerWordChart : Uses
-StatisticHandler --> SummarizedFillWordsChart : Uses
-UserStatistic --> ServerUser : Uses
-UserStatistic --> FillWordChart : Uses
-UserStatistic --> TriggerWordChart : Uses
-ServerClient --> JSONObject : Uses
-ClientHandler --> JSONObject : Uses
-ServerHandler --> JSONObject : Uses
-FillWordChart --> ServerUser : Optional
-TriggerWordChart --> ServerUser : Optional
 
 @enduml

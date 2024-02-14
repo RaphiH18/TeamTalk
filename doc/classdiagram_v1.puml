@@ -1,5 +1,5 @@
 @startuml
-title TeamTalk | Klassendiagramm
+title TeamTalk | Klassendiagramm v1
 
 class Client {
     main()
