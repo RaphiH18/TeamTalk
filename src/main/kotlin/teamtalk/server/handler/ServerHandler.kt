@@ -4,13 +4,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import teamtalk.utilities
 import teamtalk.message.FileMessage
 import teamtalk.message.TextMessage
 import teamtalk.server.handler.network.ServerClient
 import teamtalk.server.handler.network.ServerHeader
 import teamtalk.server.serverLogger.debug
 import teamtalk.server.serverLogger.log
+import teamtalk.utilities
 import java.io.File
 import java.net.InetAddress
 import java.net.ServerSocket

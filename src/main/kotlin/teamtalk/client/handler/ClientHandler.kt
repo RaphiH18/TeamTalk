@@ -2,7 +2,6 @@ package teamtalk.client.handler
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -10,10 +9,10 @@ import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import teamtalk.client.clientLogger.debug
 import teamtalk.client.clientLogger.log
-import teamtalk.utilities
 import teamtalk.message.Contact
 import teamtalk.message.FileMessage
 import teamtalk.message.TextMessage
+import teamtalk.utilities
 import java.io.*
 import java.net.Socket
 import java.time.Instant

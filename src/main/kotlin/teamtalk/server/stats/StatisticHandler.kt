@@ -195,11 +195,11 @@ class StatisticHandler(private val chatServer: ChatServer) {
     private fun loadGlobalTriggerWordsData(user: ServerUser) {
         val newData = mutableListOf<Map<String, Int>>()
 
-        for (map in user.getStats().triggerWordChart.getData()) {
-            val newMap = mutableMapOf<String, Int>()
+        for ((mapIndex, userMap) in user.getStats().triggerWordChart.getData().withIndex()) {
+            val newMap = triggerWordGlobalChart.getData()[mapIndex]
 
-            for ((word, count) in map) {
-                val currentWordData = map[word]
+            for ((word, count) in userMap) {
+                val currentWordData = newMap[word]
 
                 if (currentWordData != null) {
                     newMap[word] = currentWordData + count
@@ -208,7 +208,7 @@ class StatisticHandler(private val chatServer: ChatServer) {
                 }
             }
 
-            newData.add(map)
+            newData.add(newMap)
         }
 
         triggerWordGlobalChart.setData(newData)

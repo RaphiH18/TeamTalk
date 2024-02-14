@@ -16,6 +16,7 @@ import kotlinx.coroutines.javafx.JavaFx
 import teamtalk.server.handler.ChatServer
 import teamtalk.server.handler.ServerUser
 import teamtalk.server.serverLogger
+import teamtalk.server.serverLogger.DEBUG
 import teamtalk.server.serverLogger.log
 import java.time.Duration
 import java.time.Instant
@@ -50,6 +51,7 @@ class ServerGUI(private val chatServer: ChatServer) {
     val portTF = TextField("4444")
     val ipTF = TextField("127.0.0.1")
     private val applyBTN = applyBTN()
+    val debugCB = debugCB()
 
     // Globale Variablen/Values für den "Globale Statistik"-Tab
     private val totalMessagesLBL = Label("0")
@@ -196,6 +198,9 @@ class ServerGUI(private val chatServer: ChatServer) {
         settingsVB.children.add(Separator())
         settingsVB.children.add(networkSettingsGP)
         settingsVB.children.add(applyBTN)
+        settingsVB.children.add(Label("Debug"))
+        settingsVB.children.add(Separator())
+        settingsVB.children.add(debugCB)
 
         return Tab("Einstellungen").apply {
             content = settingsVB
@@ -383,6 +388,20 @@ class ServerGUI(private val chatServer: ChatServer) {
         return Button("Übernehmen").apply {
             setOnAction {
                 applySettings()
+            }
+        }
+    }
+
+    private fun debugCB() : CheckBox {
+        return CheckBox("Debug-Modus").apply {
+            setOnAction {
+                DEBUG = isSelected
+
+                if (DEBUG) {
+                    log("Der Debug-Modus ist jetzt aktiviert.")
+                } else {
+                    log("Der Debug-Modus ist jetzt deaktiviert.")
+                }
             }
         }
     }

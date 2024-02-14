@@ -19,6 +19,7 @@ object serverLogger {
     private val handlerScope = CoroutineScope(Dispatchers.IO)
 
     var DEBUG = false
+
     val DEFAULT_LOG_PATH = "log/logs.txt"
     val PREFIX = "[TeamTalk]"
 

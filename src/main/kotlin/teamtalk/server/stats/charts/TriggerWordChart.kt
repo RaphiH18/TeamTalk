@@ -135,8 +135,6 @@ class TriggerWordChart(private val chatServer: ChatServer, private val user: Ser
     Interne Logik
      */
     fun countIfTriggerWord(word: String) {
-        println("wort ist ein triggerWort: ${isTriggerWord(word)}")
-
         if (isTriggerWord(word)) {
             val category = getCategory(word)
             when (category) {
@@ -249,7 +247,6 @@ class TriggerWordChart(private val chatServer: ChatServer, private val user: Ser
 
         triggerWordsCount = updatedStats
         update()
-        println(triggerWordsCount)
     }
 
 //    fun setData(data: List<Map<String, Int>>) {

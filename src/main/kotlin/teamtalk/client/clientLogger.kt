@@ -1,13 +1,8 @@
 package teamtalk.client
 
-import javafx.geometry.Insets
-import javafx.scene.control.Label
 import javafx.scene.control.TextArea
-import javafx.scene.layout.Priority
-import javafx.scene.layout.VBox
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat

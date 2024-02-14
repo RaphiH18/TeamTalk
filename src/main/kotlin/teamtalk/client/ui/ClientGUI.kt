@@ -309,7 +309,7 @@ class ClientGUI(private val chatClient: ChatClient) {
             prefHeight = 50.0
             prefWidth = 580.0
             font = Font("Arial", 24.0)
-            style = ("-fx-background-color: #aaaaaa;");
+            style = ("-fx-background-color: #273c75; -fx-text-fill: white");
             alignment = Pos.CENTER
             text = defaultUser
         }

@@ -2,7 +2,6 @@ package teamtalk.server.handler
 
 import org.apache.commons.configuration2.YAMLConfiguration
 import teamtalk.server.serverLogger
-import teamtalk.utilities
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
@@ -31,6 +30,7 @@ class ServerConfig(private val chatServer: ChatServer) {
     fun saveSettings() {
         configFile.setProperty("server.ip", chatServer.getIP())
         configFile.setProperty("server.port", chatServer.getPort())
+        configFile.setProperty("server.debug", serverLogger.DEBUG)
         configFile.write(FileWriter(DEFAULT_CONFIG_PATH))
     }
 
@@ -101,6 +101,7 @@ class ServerConfig(private val chatServer: ChatServer) {
         chatServer.setIP(configFile.getString("server.ip"))
         chatServer.setPort(configFile.getInt("server.port"))
         serverLogger.DEBUG = configFile.getBoolean("server.debug")
+        chatServer.getGUI().debugCB.isSelected = serverLogger.DEBUG
     }
 
     fun defaultFillWords(): List<String> {

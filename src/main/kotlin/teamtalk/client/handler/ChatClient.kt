@@ -1,7 +1,6 @@
 package teamtalk.client.handler
 
 import teamtalk.client.ui.ClientGUI
-import java.util.*
 
 class ChatClient {
 

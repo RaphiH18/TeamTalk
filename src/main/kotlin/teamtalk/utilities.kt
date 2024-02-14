@@ -1,6 +1,5 @@
 package teamtalk
 
-import org.apache.commons.configuration2.YAMLConfiguration
 import org.json.JSONObject
 
 object utilities {
